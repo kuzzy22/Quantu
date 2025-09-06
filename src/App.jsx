@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+ import React, { useState, useEffect, useRef } from 'react';
 
 // --- MOCK DATA ---
 // In a real application, this data would come from a database and smart contracts.
@@ -18,7 +18,13 @@ const initialProjects = [
     },
     apyFundsDeposited: 0,
     apyClaimedBy: {},
-    image: 'https://placehold.co/600x400/0D1117/FFFFFF?text=Lekki+Pearl',
+    image: 'https://placehold.co/800x600/0D1117/FFFFFF?text=Lekki+Pearl',
+    images: [
+        'https://placehold.co/800x600/0D1117/FFFFFF?text=Lekki+Pearl',
+        'https://placehold.co/800x600/1E293B/FFFFFF?text=Living+Room',
+        'https://placehold.co/800x600/374151/FFFFFF?text=Bedroom',
+        'https://placehold.co/800x600/4B5563/FFFFFF?text=Kitchen',
+    ],
     tokenSupply: 500000,
     ticker: 'LPR',
     term: 24
@@ -37,7 +43,13 @@ const initialProjects = [
     },
     apyFundsDeposited: 0,
     apyClaimedBy: {},
-    image: 'https://placehold.co/600x400/0D1117/FFFFFF?text=Eko+Tower',
+    image: 'https://placehold.co/800x600/0D1117/FFFFFF?text=Eko+Tower',
+    images: [
+        'https://placehold.co/800x600/0D1117/FFFFFF?text=Eko+Tower',
+        'https://placehold.co/800x600/1E293B/FFFFFF?text=Ocean+View',
+        'https://placehold.co/800x600/374151/FFFFFF?text=Penthouse',
+        'https://placehold.co/800x600/4B5563/FFFFFF?text=Lobby',
+    ],
     tokenSupply: 1000000,
     ticker: 'EAT',
     term: 36
@@ -56,7 +68,12 @@ const initialProjects = [
     },
     apyFundsDeposited: 0,
     apyClaimedBy: {},
-    image: 'https://placehold.co/600x400/0D1117/FFFFFF?text=Abuja+Estate',
+    image: 'https://placehold.co/800x600/0D1117/FFFFFF?text=Abuja+Estate',
+    images: [
+        'https://placehold.co/800x600/0D1117/FFFFFF?text=Abuja+Estate',
+        'https://placehold.co/800x600/1E293B/FFFFFF?text=Solar+Panels',
+        'https://placehold.co/800x600/374151/FFFFFF?text=Smart+Home+Interior',
+    ],
     tokenSupply: 750000,
     ticker: 'ASE',
     term: 30
@@ -76,7 +93,12 @@ const initialProjects = [
     },
     apyFundsDeposited: 9750, // 13% of 900k is 117k/yr. 117k/12 is 9750/month
     apyClaimedBy: {},
-    image: 'https://placehold.co/600x400/0D1117/FFFFFF?text=Ikoyi+Gardens',
+    image: 'https://placehold.co/800x600/0D1117/FFFFFF?text=Ikoyi+Gardens',
+    images: [
+        'https://placehold.co/800x600/0D1117/FFFFFF?text=Ikoyi+Gardens',
+        'https://placehold.co/800x600/1E293B/FFFFFF?text=Poolside',
+        'https://placehold.co/800x600/374151/FFFFFF?text=Garden+View',
+    ],
     tokenSupply: 450000,
     ticker: 'IKG',
     term: 24
@@ -93,7 +115,12 @@ const initialProjects = [
     investors: {},
     apyFundsDeposited: 0,
     apyClaimedBy: {},
-    image: 'https://placehold.co/600x400/0D1117/FFFFFF?text=PH+Tech+Hub',
+    image: 'https://placehold.co/800x600/0D1117/FFFFFF?text=PH+Tech+Hub',
+    images: [
+        'https://placehold.co/800x600/0D1117/FFFFFF?text=PH+Tech+Hub',
+        'https://placehold.co/800x600/1E293B/FFFFFF?text=Office+Space',
+        'https://placehold.co/800x600/374151/FFFFFF?text=Exterior+View',
+    ],
     tokenSupply: 650000,
     ticker: 'PHT',
     term: 48
@@ -140,6 +167,8 @@ const DownloadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-
 const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m0 0A5.975 5.975 0 0112 13a5.975 5.975 0 013 1.803" /></svg>;
 const ShieldExclamationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 20.944L12 22l9-1.056v-9.468c0-1.03-.42-2.003-1.172-2.712z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v4m0 4h.01" /></svg>;
 const BellSVG = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>;
+const ChevronLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>;
+const ChevronRightIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>;
 const Spinner = () => (
     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -224,7 +253,7 @@ const useScript = (src) => {
 // --- HELPER COMPONENTS ---
 
 const Modal = ({ children, onClose, title, maxWidth = 'max-w-5xl' }) => (
-  <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4">
+  <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-40 p-4">
     <div className={`bg-gray-800 rounded-lg shadow-2xl p-6 sm:p-8 w-full ${maxWidth} border border-gray-700`}>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-white">{title}</h2>
@@ -262,33 +291,33 @@ const KycPanel = ({ user, setUser }) => {
     };
 
     return (
-        <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-            <h3 className="text-xl font-semibold mb-4 text-white">KYC Verification</h3>
+        <div className="bg-gray-800/50 p-3 rounded-xl border border-gray-700/50">
+            <h3 className="text-lg font-semibold mb-1 text-white">KYC Verification</h3>
             <div className="text-gray-300">
-                <p className="mb-4">To comply with regulations, we need to verify your identity.</p>
-                <div className="flex items-center space-x-4 p-4 rounded-lg bg-gray-700/50 mb-4">
-                    <div className={`p-2 rounded-full ${status === 'Verified' ? 'bg-green-500/20' : 'bg-yellow-500/20'}`}>
+                <p className="mb-1 text-sm">To comply with regulations, we need to verify your identity.</p>
+                <div className="flex items-center space-x-4 p-2 rounded-lg bg-gray-700/50 mb-2">
+                    <div className={`p-1.5 rounded-full ${status === 'Verified' ? 'bg-green-500/20' : 'bg-yellow-500/20'}`}>
                        {status === 'Verified' ? <CheckCircleIcon /> : <XCircleIcon />}
                     </div>
                     <div>
-                        <p className="font-medium text-white">Verification Status</p>
-                        <p className={`font-bold ${status === 'Verified' ? 'text-green-400' : 'text-yellow-400'}`}>{status}</p>
+                        <p className="font-medium text-white text-sm">Verification Status</p>
+                        <p className={`font-bold text-sm ${status === 'Verified' ? 'text-green-400' : 'text-yellow-400'}`}>{status}</p>
                     </div>
                 </div>
                  {status !== 'Verified' && (
                     <>
-                        <p className="mb-4">Please upload a government-issued ID (e.g., Passport, Driver's License) and a proof of address.</p>
-                        <div className="space-y-4">
+                        <p className="mb-1 text-sm">Please upload a government-issued ID and a proof of address.</p>
+                        <div className="space-y-1">
                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Government ID</label>
-                                <input type="file" className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-300 hover:file:bg-blue-500/20"/>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">Government ID</label>
+                                <input type="file" className="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-300 hover:file:bg-blue-500/20"/>
                             </div>
                              <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Proof of Address</label>
-                                <input type="file" className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-300 hover:file:bg-blue-500/20"/>
+                                <label className="block text-xs font-medium text-gray-400 mb-1">Proof of Address</label>
+                                <input type="file" className="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-300 hover:file:bg-blue-500/20"/>
                             </div>
                         </div>
-                        <button onClick={handleKycSubmit} disabled={isSubmitting} className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:bg-gray-500 flex items-center justify-center">
+                        <button onClick={handleKycSubmit} disabled={isSubmitting} className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:bg-gray-500 flex items-center justify-center text-sm">
                             {isSubmitting ? <><Spinner /> Submitting...</> : 'Submit for Verification'}
                         </button>
                     </>
@@ -335,25 +364,25 @@ const DeveloperOnboarding = ({ user, setUser }) => {
     };
 
     return (
-        <Modal title="Welcome to QuantuHome, Developer!" onClose={() => {}}>
+        <Modal title="Welcome to QuantuHome, Developer!" onClose={() => {}} maxWidth="max-w-2xl">
             <div className="text-gray-300">
                 <p className="mb-4">Let's get your account set up so you can start creating projects.</p>
-                <div className="space-y-6">
+                <div className="space-y-4">
                     <div className="bg-gray-700/50 p-4 rounded-lg">
                         <h4 className="font-semibold text-white mb-2">Step 1: Complete KYC</h4>
-                        <p className="text-sm mb-4">We need to verify your company's identity to ensure a secure platform for investors.</p>
+                        <p className="text-sm mb-2">We need to verify your company's identity to ensure a secure platform for investors.</p>
                          <KycPanel user={user} setUser={setUser}/>
                     </div>
                      <div className="bg-gray-700/50 p-4 rounded-lg">
                         <h4 className="font-semibold text-white mb-2">Step 2: Set up Treasury Payout Address</h4>
-                        <p className="text-sm mb-4">This is the permanent, verified address where project funds (minus platform fees) will be sent. Please ensure this is a highly secure wallet (e.g., a multi-signature or hardware wallet).</p>
+                        <p className="text-sm mb-2">This is the permanent, verified address where project funds (minus platform fees) will be sent. Please ensure this is a highly secure wallet (e.g., a multi-signature or hardware wallet).</p>
                         <input type="text" value={treasuryWallet} onChange={(e) => setTreasuryWallet(e.target.value)} placeholder="Enter your secure payout address (e.g., 0x...)" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
                     </div>
                 </div>
                  <button 
                     onClick={handleComplete}
                     disabled={!user.kycVerified || !treasuryWallet}
-                    className="mt-8 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition disabled:bg-gray-500 disabled:cursor-not-allowed">
+                    className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition disabled:bg-gray-500 disabled:cursor-not-allowed">
                     { !user.kycVerified ? 'Please complete KYC first' : !treasuryWallet ? 'Please enter a treasury address' : 'Complete Onboarding' }
                 </button>
             </div>
@@ -616,14 +645,31 @@ const LandingPage = ({ onEnterApp }) => {
 };
 
 // --- SHARED DASHBOARD COMPONENTS ---
-const NavItem = ({ icon, label, tabName, activeTab, setActiveTab }) => (
-    <button
-        onClick={() => setActiveTab(tabName)}
-        className={`flex items-center space-x-3 w-full text-left p-3 rounded-lg transition ${activeTab === tabName ? 'bg-blue-600 text-white' : 'hover:bg-gray-700/50 text-gray-300'}`}
-    >
-        {icon}
-        <span className="font-semibold">{label}</span>
-    </button>
+const LockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-auto text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>;
+
+const NavItem = ({ icon, label, tabName, activeTab, setActiveTab, disabled = false }) => (
+    <div className="relative group">
+        <button
+            onClick={() => !disabled && setActiveTab(tabName)}
+            disabled={disabled}
+            className={`flex items-center space-x-3 w-full text-left p-3 rounded-lg transition ${
+                disabled
+                ? 'text-gray-500 cursor-not-allowed'
+                : activeTab === tabName
+                    ? 'bg-blue-600 text-white'
+                    : 'hover:bg-gray-700/50 text-gray-300'
+            }`}
+        >
+            {icon}
+            <span className="font-semibold">{label}</span>
+            {disabled && <LockIcon />}
+        </button>
+        {disabled && (
+            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-max px-2 py-1 bg-gray-600 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 shadow-lg">
+                Complete KYC to unlock
+            </div>
+        )}
+    </div>
 );
 
 const NotificationPanel = ({ userNotifications, onMarkAsRead }) => {
@@ -651,11 +697,61 @@ const NotificationPanel = ({ userNotifications, onMarkAsRead }) => {
     )
 }
 
+const ImageGalleryModal = ({ images, onClose }) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    const goToPrevious = (e) => {
+        e.stopPropagation();
+        const isFirstSlide = currentIndex === 0;
+        const newIndex = isFirstSlide ? images.length - 1 : currentIndex - 1;
+        setCurrentIndex(newIndex);
+    };
+
+    const goToNext = (e) => {
+        e.stopPropagation();
+        const isLastSlide = currentIndex === images.length - 1;
+        const newIndex = isLastSlide ? 0 : currentIndex + 1;
+        setCurrentIndex(newIndex);
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center z-50 p-4" onClick={onClose}>
+            <button onClick={onClose} className="absolute top-4 right-4 text-white text-5xl font-bold z-50">&times;</button>
+            <div className="relative w-full max-w-4xl max-h-[70vh] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
+                <button onClick={goToPrevious} className="absolute left-0 z-30 p-4 text-white bg-black bg-opacity-30 hover:bg-opacity-50 rounded-full m-2 transition">
+                    <ChevronLeftIcon />
+                </button>
+                <img src={images[currentIndex]} alt="Property View" className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" />
+                <button onClick={goToNext} className="absolute right-0 z-30 p-4 text-white bg-black bg-opacity-30 hover:bg-opacity-50 rounded-full m-2 transition">
+                    <ChevronRightIcon />
+                </button>
+            </div>
+            <div className="w-full max-w-4xl mt-4 flex justify-center items-center space-x-2 p-2 bg-black bg-opacity-20 rounded-lg overflow-x-auto">
+                {images.map((image, index) => (
+                    <img
+                        key={index}
+                        src={image}
+                        alt={`Thumbnail ${index + 1}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentIndex(index);
+                        }}
+                        className={`h-20 w-auto object-cover rounded-md cursor-pointer border-4 ${currentIndex === index ? 'border-blue-500' : 'border-transparent hover:border-gray-500'}`}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+};
+
+
 const Marketplace = ({ projects, setProjects, currentUser }) => {
     const [activeTab, setActiveTab] = useState('properties');
     const [investModalOpen, setInvestModalOpen] = useState(false);
     const [selectedProject, setSelectedProject] = useState(null);
     const [investmentAmount, setInvestmentAmount] = useState('');
+    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+    const [galleryImages, setGalleryImages] = useState([]);
 
     const handleInvestClick = (project) => {
         setSelectedProject(project);
@@ -674,6 +770,16 @@ const Marketplace = ({ projects, setProjects, currentUser }) => {
         alert(`Successfully invested ${investmentAmount} USDT in ${selectedProject.name}`);
         closeInvestModal();
     }
+
+    const handleImageClick = (projectImages) => {
+        setGalleryImages(projectImages);
+        setIsGalleryOpen(true);
+    };
+
+    const closeGalleryModal = () => {
+        setIsGalleryOpen(false);
+        setGalleryImages([]);
+    };
 
     return (
         <div>
@@ -779,12 +885,24 @@ const Marketplace = ({ projects, setProjects, currentUser }) => {
                 </div>
             )}
             
+            {isGalleryOpen && (
+                <ImageGalleryModal
+                    images={galleryImages}
+                    onClose={closeGalleryModal}
+                />
+            )}
+
             {investModalOpen && selectedProject && (
                 <Modal title={selectedProject.name} onClose={closeInvestModal}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[80vh] overflow-y-auto pr-2">
                         {/* Left side: Image and details */}
                         <div>
-                            <img src={selectedProject.image} alt={selectedProject.name} className="w-full h-64 object-cover rounded-lg mb-4" />
+                            <img 
+                                src={selectedProject.image} 
+                                alt={selectedProject.name} 
+                                className="w-full h-64 object-cover rounded-lg mb-4 cursor-pointer transition hover:opacity-90 shadow-lg"
+                                onClick={() => handleImageClick(selectedProject.images)}
+                             />
                             <h3 className="text-2xl font-bold text-white mb-2">{selectedProject.name}</h3>
                             <p className="text-gray-400">{selectedProject.description}</p>
                         </div>
@@ -2324,10 +2442,36 @@ const InvestorDashboard = ({ projects, setProjects, currentUser, onUserUpdate })
                     </div>
                 );
             case 'marketplace':
-                return (
-                    <Marketplace projects={projects} setProjects={setProjects} currentUser={currentUser} />
-                );
+                if (!userData.kycVerified) {
+                    return (
+                        <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                            <div className="bg-gray-800 p-8 rounded-2xl border border-gray-700 max-w-md">
+                                <ShieldExclamationIcon className="mx-auto h-16 w-16 text-yellow-400" />
+                                <h3 className="mt-4 text-2xl font-bold text-white">Access Denied</h3>
+                                <p className="mt-2 text-gray-400">Please complete KYC verification in the Settings tab to access the Marketplace and start investing.</p>
+                                <button onClick={() => setActiveTab('settings')} className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg transition">
+                                    Go to Settings
+                                </button>
+                            </div>
+                        </div>
+                    );
+                }
+                return <Marketplace projects={projects} setProjects={setProjects} currentUser={currentUser} />;
             case 'wallet':
+                if (!userData.kycVerified) {
+                    return (
+                        <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                            <div className="bg-gray-800 p-8 rounded-2xl border border-gray-700 max-w-md">
+                                <ShieldExclamationIcon className="mx-auto h-16 w-16 text-yellow-400" />
+                                <h3 className="mt-4 text-2xl font-bold text-white">Access Denied</h3>
+                                <p className="mt-2 text-gray-400">Please complete KYC verification in the Settings tab to access your wallet.</p>
+                                <button onClick={() => setActiveTab('settings')} className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg transition">
+                                    Go to Settings
+                                </button>
+                            </div>
+                        </div>
+                    );
+                }
                 return (
                     <div>
                         <h2 className="text-4xl font-bold text-white mb-6">My Wallet</h2>
@@ -2500,8 +2644,8 @@ const InvestorDashboard = ({ projects, setProjects, currentUser, onUserUpdate })
                     <nav className="space-y-2">
                         <NavItem icon={<DashboardIcon />} label="Dashboard" tabName="dashboard" activeTab={activeTab} setActiveTab={setActiveTab} />
                         <NavItem icon={<PortfolioIcon />} label="Portfolio" tabName="portfolio" activeTab={activeTab} setActiveTab={setActiveTab} />
-                        <NavItem icon={<MarketplaceIcon />} label="Marketplace" tabName="marketplace" activeTab={activeTab} setActiveTab={setActiveTab} />
-                        <NavItem icon={<WalletIcon />} label="Wallet" tabName="wallet" activeTab={activeTab} setActiveTab={setActiveTab} />
+                        <NavItem icon={<MarketplaceIcon />} label="Marketplace" tabName="marketplace" activeTab={activeTab} setActiveTab={setActiveTab} disabled={!userData.kycVerified} />
+                        <NavItem icon={<WalletIcon />} label="Wallet" tabName="wallet" activeTab={activeTab} setActiveTab={setActiveTab} disabled={!userData.kycVerified} />
                         <NavItem icon={<SettingsIcon />} label="Settings" tabName="settings" activeTab={activeTab} setActiveTab={setActiveTab} />
                         <NavItem icon={<HelpIcon />} label="Help & Support" tabName="help" activeTab={activeTab} setActiveTab={setActiveTab} />
                     </nav>
@@ -2675,6 +2819,9 @@ export default function App() {
             return null;
     }
 }
+
+
+
 
 
 
