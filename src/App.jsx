@@ -291,33 +291,33 @@ const KycPanel = ({ user, setUser }) => {
     };
 
     return (
-        <div className="bg-gray-800/50 p-3 rounded-xl border border-gray-700/50">
-            <h3 className="text-lg font-semibold mb-1 text-white">KYC Verification</h3>
+        <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
+            <h3 className="text-xl font-semibold mb-4 text-white">KYC Verification</h3>
             <div className="text-gray-300">
-                <p className="mb-1 text-sm">To comply with regulations, we need to verify your identity.</p>
-                <div className="flex items-center space-x-4 p-2 rounded-lg bg-gray-700/50 mb-2">
-                    <div className={`p-1.5 rounded-full ${status === 'Verified' ? 'bg-green-500/20' : 'bg-yellow-500/20'}`}>
-                       {status === 'Verified' ? <CheckCircleIcon /> : <XCircleIcon />}
-                    </div>
+                <p className="mb-4">To comply with regulations, we need to verify your identity.</p>
+        <div className="flex items-center space-x-4 p-4 rounded-lg bg-gray-700/50 mb-4">
+            <div className={`p-2 rounded-full ${status === 'Verified' ? 'bg-green-500/20' : 'bg-yellow-500/20'}`}>
+               {status === 'Verified' ? <CheckCircleIcon /> : <XCircleIcon />}
+            </div>
                     <div>
-                        <p className="font-medium text-white text-sm">Verification Status</p>
-                        <p className={`font-bold text-sm ${status === 'Verified' ? 'text-green-400' : 'text-yellow-400'}`}>{status}</p>
+                        <p className="font-medium text-white">Verification Status</p>
+                        <p className={`font-bold ${status === 'Verified' ? 'text-green-400' : 'text-yellow-400'}`}>{status}</p>
                     </div>
                 </div>
                  {status !== 'Verified' && (
                     <>
-                        <p className="mb-1 text-sm">Please upload a government-issued ID and a proof of address.</p>
-                        <div className="space-y-1">
+                        <p className="mb-4">Please upload a government-issued ID (e.g., Passport, Driver's License) and a proof of address.</p>
+                        <div className="space-y-4">
                             <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1">Government ID</label>
-                                <input type="file" className="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-300 hover:file:bg-blue-500/20"/>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Government ID</label>
+                                <input type="file" className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-300 hover:file:bg-blue-500/20"/>
                             </div>
                              <div>
-                                <label className="block text-xs font-medium text-gray-400 mb-1">Proof of Address</label>
-                                <input type="file" className="w-full text-xs text-gray-400 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-500/10 file:text-blue-300 hover:file:bg-blue-500/20"/>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Proof of Address</label>
+                                <input type="file" className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-300 hover:file:bg-blue-500/20"/>
                             </div>
                         </div>
-                        <button onClick={handleKycSubmit} disabled={isSubmitting} className="mt-3 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:bg-gray-500 flex items-center justify-center text-sm">
+                        <button onClick={handleKycSubmit} disabled={isSubmitting} className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:bg-gray-500 flex items-center justify-center">
                             {isSubmitting ? <><Spinner /> Submitting...</> : 'Submit for Verification'}
                         </button>
                     </>
@@ -382,7 +382,7 @@ const DeveloperOnboarding = ({ user, setUser }) => {
                  <button 
                     onClick={handleComplete}
                     disabled={!user.kycVerified || !treasuryWallet}
-                    className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition disabled:bg-gray-500 disabled:cursor-not-allowed">
+                    className="mt-8 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition disabled:bg-gray-500 disabled:cursor-not-allowed">
                     { !user.kycVerified ? 'Please complete KYC first' : !treasuryWallet ? 'Please enter a treasury address' : 'Complete Onboarding' }
                 </button>
             </div>
@@ -1244,6 +1244,20 @@ const AdminDashboard = ({ projects, setProjects }) => {
         document.body.removeChild(textArea);
     };
 
+    const handleKycAction = (userId, isApproved) => {
+        setAllUsers(prevUsers =>
+            prevUsers.map(user =>
+                user.id === userId ? { ...user, kycVerified: isApproved } : user
+            )
+        );
+
+        // In a real app, you would also update the master user record
+        const userKey = Object.keys(users).find(key => users[key].id === userId);
+        if (userKey) {
+            users[userKey].kycVerified = isApproved;
+        }
+    };
+
     useEffect(() => {
         if (adminActiveTab !== 'dashboard' || chartJsStatus !== 'ready' || !window.Chart) return;
 
@@ -1428,8 +1442,8 @@ const AdminDashboard = ({ projects, setProjects }) => {
                                         <p className="text-sm text-gray-400">User ID: {u.id}</p>
                                     </div>
                                     <div className="flex space-x-2">
-                                        <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 text-sm rounded-md transition">Approve</button>
-                                        <button className="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 text-sm rounded-md transition">Reject</button>
+                                        <button onClick={() => handleKycAction(u.id, true)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 text-sm rounded-md transition">Approve</button>
+                                        <button onClick={() => alert(`KYC for ${u.name} will be marked as rejected.`)} className="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 text-sm rounded-md transition">Reject</button>
                                     </div>
                                 </div>
                             )) : <p className="text-gray-400">No pending KYC submissions.</p>}
@@ -2442,20 +2456,6 @@ const InvestorDashboard = ({ projects, setProjects, currentUser, onUserUpdate })
                     </div>
                 );
             case 'marketplace':
-                if (!userData.kycVerified) {
-                    return (
-                        <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                            <div className="bg-gray-800 p-8 rounded-2xl border border-gray-700 max-w-md">
-                                <ShieldExclamationIcon className="mx-auto h-16 w-16 text-yellow-400" />
-                                <h3 className="mt-4 text-2xl font-bold text-white">Access Denied</h3>
-                                <p className="mt-2 text-gray-400">Please complete KYC verification in the Settings tab to access the Marketplace and start investing.</p>
-                                <button onClick={() => setActiveTab('settings')} className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg transition">
-                                    Go to Settings
-                                </button>
-                            </div>
-                        </div>
-                    );
-                }
                 return <Marketplace projects={projects} setProjects={setProjects} currentUser={currentUser} />;
             case 'wallet':
                 if (!userData.kycVerified) {
@@ -2644,7 +2644,7 @@ const InvestorDashboard = ({ projects, setProjects, currentUser, onUserUpdate })
                     <nav className="space-y-2">
                         <NavItem icon={<DashboardIcon />} label="Dashboard" tabName="dashboard" activeTab={activeTab} setActiveTab={setActiveTab} />
                         <NavItem icon={<PortfolioIcon />} label="Portfolio" tabName="portfolio" activeTab={activeTab} setActiveTab={setActiveTab} />
-                        <NavItem icon={<MarketplaceIcon />} label="Marketplace" tabName="marketplace" activeTab={activeTab} setActiveTab={setActiveTab} disabled={!userData.kycVerified} />
+                        <NavItem icon={<MarketplaceIcon />} label="Marketplace" tabName="marketplace" activeTab={activeTab} setActiveTab={setActiveTab} />
                         <NavItem icon={<WalletIcon />} label="Wallet" tabName="wallet" activeTab={activeTab} setActiveTab={setActiveTab} disabled={!userData.kycVerified} />
                         <NavItem icon={<SettingsIcon />} label="Settings" tabName="settings" activeTab={activeTab} setActiveTab={setActiveTab} />
                         <NavItem icon={<HelpIcon />} label="Help & Support" tabName="help" activeTab={activeTab} setActiveTab={setActiveTab} />
@@ -2819,6 +2819,7 @@ export default function App() {
             return null;
     }
 }
+
 
 
 
