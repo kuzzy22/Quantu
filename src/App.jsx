@@ -1,4 +1,4 @@
- import React, { useState, useEffect, useRef } from 'react';
+  import React, { useState, useEffect, useRef } from 'react';
 
 // --- MOCK DATA ---
 // In a real application, this data would come from a database and smart contracts.
@@ -27,7 +27,8 @@ const initialProjects = [
     ],
     tokenSupply: 500000,
     ticker: 'LPR',
-    term: 24
+    term: 24,
+    fundingDate: null,
   },
   {
     id: 2,
@@ -52,7 +53,8 @@ const initialProjects = [
     ],
     tokenSupply: 1000000,
     ticker: 'EAT',
-    term: 36
+    term: 36,
+    fundingDate: '2023-11-01T10:00:00Z',
   },
   {
     id: 3,
@@ -65,6 +67,7 @@ const initialProjects = [
     status: 'Funding',
     investors: {
        'investor2': 20000,
+       'dev1': 15000,
     },
     apyFundsDeposited: 0,
     apyClaimedBy: {},
@@ -76,7 +79,8 @@ const initialProjects = [
     ],
     tokenSupply: 750000,
     ticker: 'ASE',
-    term: 30
+    term: 30,
+    fundingDate: null,
   },
    {
     id: 4,
@@ -101,7 +105,8 @@ const initialProjects = [
     ],
     tokenSupply: 450000,
     ticker: 'IKG',
-    term: 24
+    term: 24,
+    fundingDate: '2024-05-15T14:30:00Z',
   },
    {
     id: 5,
@@ -123,7 +128,8 @@ const initialProjects = [
     ],
     tokenSupply: 650000,
     ticker: 'PHT',
-    term: 48
+    term: 48,
+    fundingDate: null,
   }
 ];
 
@@ -240,17 +246,65 @@ const useScript = (src) => {
 
         return () => {
             if (script) {
-                script.removeEventListener("load", setStateFromEvent);
-                script.removeEventListener("error", setStateFromEvent);
-            }
-        };
-    }, [src]);
+        script.removeEventListener("load", setStateFromEvent);
+        script.removeEventListener("error", setStateFromEvent);
+    }
+  };
+ }, [src]);
 
-    return status;
+ return status;
+};
+
+const useCountdown = (targetDate) => {
+    const countDownDate = new Date(targetDate).getTime();
+
+    const [countDown, setCountDown] = useState(
+        countDownDate - new Date().getTime()
+    );
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCountDown(countDownDate - new Date().getTime());
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [countDownDate]);
+
+    return getReturnValues(countDown);
+};
+
+const getReturnValues = (countDown) => {
+    // calculate time left
+    const days = Math.floor(countDown / (1000 * 60 * 60 * 24));
+    const hours = Math.floor(
+        (countDown % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+    );
+    const minutes = Math.floor((countDown % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((countDown % (1000 * 60)) / 1000);
+
+    return [days, hours, minutes, seconds];
 };
 
 
 // --- HELPER COMPONENTS ---
+
+const CountdownTimer = ({ targetDate }) => {
+    const [days, hours, minutes, seconds] = useCountdown(targetDate);
+
+    if (days + hours + minutes + seconds <= 0) {
+        return <div className="flex items-center"><span className="font-semibold text-green-400">Lock-up Period Ended</span></div>;
+    }
+
+    return (
+        <div className="flex items-center space-x-2 text-sm text-gray-400">
+            <span>Lock-up ends in:</span>
+            <span className="font-mono font-semibold text-white bg-gray-700/50 px-2 py-1 rounded-md">{String(days).padStart(2, '0')}d</span>
+            <span className="font-mono font-semibold text-white bg-gray-700/50 px-2 py-1 rounded-md">{String(hours).padStart(2, '0')}h</span>
+            <span className="font-mono font-semibold text-white bg-gray-700/50 px-2 py-1 rounded-md">{String(minutes).padStart(2, '0')}m</span>
+            <span className="font-mono font-semibold text-white bg-gray-700/50 px-2 py-1 rounded-md">{String(seconds).padStart(2, '0')}s</span>
+        </div>
+    );
+};
 
 const Modal = ({ children, onClose, title, maxWidth = 'max-w-5xl' }) => (
   <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-40 p-4">
@@ -752,6 +806,10 @@ const Marketplace = ({ projects, setProjects, currentUser }) => {
     const [investmentAmount, setInvestmentAmount] = useState('');
     const [isGalleryOpen, setIsGalleryOpen] = useState(false);
     const [galleryImages, setGalleryImages] = useState([]);
+    const [tradeModalOpen, setTradeModalOpen] = useState(false);
+    const [selectedToken, setSelectedToken] = useState(null);
+    const [tradeAmount, setTradeAmount] = useState('');
+    const [tradeAction, setTradeAction] = useState('buy'); // 'buy' or 'sell'
 
     const handleInvestClick = (project) => {
         setSelectedProject(project);
@@ -771,6 +829,19 @@ const Marketplace = ({ projects, setProjects, currentUser }) => {
         closeInvestModal();
     }
 
+    const handleTradeClick = (project) => {
+        setSelectedToken(project);
+        setTradeModalOpen(true);
+        setTradeAmount('');
+        setTradeAction('buy');
+    };
+
+    const closeTradeModal = () => {
+        setTradeModalOpen(false);
+        setSelectedToken(null);
+        setTradeAmount('');
+    };
+
     const handleImageClick = (projectImages) => {
         setGalleryImages(projectImages);
         setIsGalleryOpen(true);
@@ -789,6 +860,11 @@ const Marketplace = ({ projects, setProjects, currentUser }) => {
                     <button onClick={() => setActiveTab('properties')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'properties' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
                         Properties
                     </button>
+                    {currentUser.role === 'Developer' && (
+                        <button onClick={() => setActiveTab('my-tokens')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'my-tokens' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
+                            My Tokens
+                        </button>
+                    )}
                     <button onClick={() => setActiveTab('tokens')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'tokens' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
                         All Tokens
                     </button>
@@ -825,6 +901,37 @@ const Marketplace = ({ projects, setProjects, currentUser }) => {
                     ))}
                 </div>
             )}
+             {activeTab === 'my-tokens' && (
+                <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-hidden">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-800/60">
+                             <tr>
+                                <th className="p-5 text-base font-semibold text-gray-300 tracking-wider">Token</th>
+                                <th className="p-5 text-base font-semibold text-gray-300 tracking-wider">Project</th>
+                                <th className="p-5 text-base font-semibold text-gray-300 tracking-wider">Amount Owned (Tokens)</th>
+                                <th className="p-5 text-base font-semibold text-gray-300 tracking-wider">Value (USD)</th>
+                                <th className="p-5"></th>
+                            </tr>
+                        </thead>
+                         <tbody className="divide-y divide-gray-700/50">
+                            {projects.filter(p => p.investors[currentUser.id] && p.developerId !== currentUser.id).map(p => {
+                                const price = p.fundingGoal / p.tokenSupply;
+                                const userInvestment = p.investors[currentUser.id];
+                                const tokenAmount = userInvestment / price;
+                                return (
+                                <tr key={p.id} className="hover:bg-gray-700/40 transition">
+                                    <td className="p-5 text-lg text-white font-medium">{p.ticker}</td>
+                                    <td className="p-5 text-lg text-white">{p.name}</td>
+                                    <td className="p-5 text-lg text-white">{tokenAmount.toFixed(2)}</td>
+                                    <td className="p-5 text-lg text-white">${userInvestment.toLocaleString()}</td>
+                                    <td><button onClick={() => handleTradeClick(p)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition">Trade</button></td>
+                                </tr>
+                                )
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
              {activeTab === 'tokens' && (
                 <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-hidden">
                     <table className="w-full text-left">
@@ -847,7 +954,7 @@ const Marketplace = ({ projects, setProjects, currentUser }) => {
                                     <td className="p-5 text-lg text-white">${price.toFixed(2)}</td>
                                     <td className={`p-5 text-lg ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>{change}%</td>
                                     <td className="p-5 text-lg text-white">${p.fundingGoal.toLocaleString()}</td>
-                                    <td><button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Trade</button></td>
+                                    <td><button onClick={() => handleTradeClick(p)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition">Trade</button></td>
                                 </tr>
                                 )
                             })}
@@ -890,6 +997,55 @@ const Marketplace = ({ projects, setProjects, currentUser }) => {
                     images={galleryImages}
                     onClose={closeGalleryModal}
                 />
+            )}
+
+            {tradeModalOpen && selectedToken && (
+                <Modal title={`Trade ${selectedToken.ticker}`} onClose={closeTradeModal} maxWidth="max-w-md">
+                    <div className="flex border-b border-gray-600 mb-6">
+                        <button onClick={() => setTradeAction('buy')} className={`flex-1 py-2 font-semibold text-center transition ${tradeAction === 'buy' ? 'text-green-400 border-b-2 border-green-400' : 'text-gray-400'}`}>Buy</button>
+                        <button onClick={() => setTradeAction('sell')} className={`flex-1 py-2 font-semibold text-center transition ${tradeAction === 'sell' ? 'text-red-400 border-b-2 border-red-400' : 'text-gray-400'}`}>Sell</button>
+                    </div>
+                    <form onSubmit={(e) => { e.preventDefault(); alert('Trade submitted!'); closeTradeModal(); }}>
+                        <div className="space-y-4">
+                             <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-1">Amount ({selectedToken.ticker})</label>
+                                <input
+                                    type="number"
+                                    value={tradeAmount}
+                                    onChange={(e) => setTradeAmount(e.target.value)}
+                                    placeholder="0.00"
+                                    required
+                                    className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                />
+                            </div>
+                            {tradeAmount && (
+                                 <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-600/50 text-sm">
+                                     <div className="flex justify-between items-center text-gray-400">
+                                         <span>Subtotal</span>
+                                         <span className="font-mono text-white">${(tradeAmount * (selectedToken.fundingGoal / selectedToken.tokenSupply)).toFixed(2)}</span>
+                                     </div>
+                                     <div className="flex justify-between items-center text-gray-400 mt-2">
+                                         <span>Platform Fee (1.5%)</span>
+                                         <span className="font-mono text-white">${(tradeAmount * (selectedToken.fundingGoal / selectedToken.tokenSupply) * 0.015).toFixed(2)}</span>
+                                     </div>
+                                     <div className="border-t border-gray-600 my-2"></div>
+                                     <div className="flex justify-between items-center text-white font-bold text-base">
+                                         <span>Total {tradeAction === 'buy' ? 'Cost' : 'Proceeds'}</span>
+                                         <span className="font-mono">
+                                            ${tradeAction === 'buy'
+                                                ? (tradeAmount * (selectedToken.fundingGoal / selectedToken.tokenSupply) * 1.015).toFixed(2)
+                                                : (tradeAmount * (selectedToken.fundingGoal / selectedToken.tokenSupply) * 0.985).toFixed(2)
+                                            }
+                                         </span>
+                                     </div>
+                                 </div>
+                            )}
+                        </div>
+                         <button type="submit" className={`w-full font-bold py-3 px-4 rounded-lg transition mt-6 ${tradeAction === 'buy' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} text-white`}>
+                            {tradeAction === 'buy' ? 'Buy' : 'Sell'} {selectedToken.ticker}
+                        </button>
+                    </form>
+                </Modal>
             )}
 
             {investModalOpen && selectedProject && (
@@ -942,6 +1098,23 @@ const Marketplace = ({ projects, setProjects, currentUser }) => {
                                         <p>You will receive approx. <span className="font-semibold text-white">{(investmentAmount / (selectedProject.fundingGoal / selectedProject.tokenSupply) || 0).toFixed(2)} {selectedProject.ticker}</span> tokens.</p>
                                     </div>
                                 </div>
+                                {investmentAmount && (
+                                <div className="mt-4 p-4 bg-gray-900/50 rounded-lg border border-gray-600/50 text-sm">
+                                    <div className="flex justify-between items-center text-gray-400">
+                                        <span>Investment</span>
+                                        <span className="font-mono text-white">${parseFloat(investmentAmount).toFixed(2)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-gray-400 mt-2">
+                                        <span>Platform Fee (1.5%)</span>
+                                        <span className="font-mono text-white">${(investmentAmount * 0.015).toFixed(2)}</span>
+                                    </div>
+                                    <div className="border-t border-gray-600 my-2"></div>
+                                    <div className="flex justify-between items-center text-white font-bold text-base">
+                                        <span>Total Payment</span>
+                                        <span className="font-mono">${(parseFloat(investmentAmount) * 1.015).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                                )}
                                 <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition mt-6">Confirm Investment</button>
                             </form>
                         </div>
@@ -1457,7 +1630,7 @@ const AdminDashboard = ({ projects, setProjects }) => {
                          <div className="space-y-6 max-w-2xl">
                              <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
                                 <label className="block text-xl font-semibold text-white mb-2">Platform Fee</label>
-                                <input type="number" defaultValue="2" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-white" />
+                                <input type="number" defaultValue="3" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-white" />
                                 <p className="text-sm text-gray-400 mt-2">The percentage fee charged on successfully funded projects.</p>
                              </div>
                              <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
@@ -1544,6 +1717,10 @@ const DeveloperDashboard = ({ projects, setProjects, currentUser, onUserUpdate }
     const [mockUsdtBalance, setMockUsdtBalance] = useState(5800.75);
     const [connectedWallet, setConnectedWallet] = useState(null);
 
+    const tokenAllocationChartRef = useRef(null);
+    const chartJsStatus = useScript('https://cdn.jsdelivr.net/npm/chart.js');
+    const dataLabelsPluginStatus = useScript(chartJsStatus === 'ready' ? 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js' : null);
+
     const initialDevTransactions = [
         { id: 1, type: 'Project Payout', amount: 1176000, currency: 'USDT', date: '2023-10-20', status: 'Completed', project: 'Eko Atlantic Tower' },
         { id: 2, type: 'APY Deposit', amount: -9750, currency: 'USDT', date: '2023-10-18', status: 'Completed', project: 'Ikoyi Gardens' },
@@ -1552,6 +1729,7 @@ const DeveloperDashboard = ({ projects, setProjects, currentUser, onUserUpdate }
     const [transactions, setTransactions] = useState(initialDevTransactions);
 
     const developerProjects = projects.filter(p => p.developerId === currentUser.id);
+    const developerInvestments = projects.filter(p => p.investors[currentUser.id] && p.developerId !== currentUser.id);
     
     const handleConnectWallet = () => {
         setConnectedWallet({
@@ -1607,6 +1785,60 @@ const DeveloperDashboard = ({ projects, setProjects, currentUser, onUserUpdate }
         }
     }, [newProjectData.valuation, newProjectData.tokenSupply]);
 
+    useEffect(() => {
+        if (activeTab !== 'dashboard' || chartJsStatus !== 'ready' || dataLabelsPluginStatus !== 'ready' || !window.Chart || !window.ChartDataLabels || developerInvestments.length === 0) return;
+
+        window.Chart.register(window.ChartDataLabels);
+
+        if (tokenAllocationChartRef.current) {
+             const existingChart = window.Chart.getChart(tokenAllocationChartRef.current);
+             if (existingChart) {
+                existingChart.destroy();
+             }
+        }
+
+        const allocationCtx = tokenAllocationChartRef.current.getContext('2d');
+        const allocationData = {
+            labels: developerInvestments.map(p => p.name),
+            datasets: [{
+                data: developerInvestments.map(p => p.investors[currentUser.id]),
+                backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
+                borderColor: '#1f2937', // bg-gray-800
+                borderWidth: 2,
+            }]
+        };
+        new window.Chart(allocationCtx, {
+            type: 'pie',
+            data: allocationData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#d1d5db',
+                            padding: 20
+                        }
+                    },
+                    datalabels: {
+                         formatter: (value, ctx) => {
+                             const sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                             const percentage = ((value / sum) * 100).toFixed(1) + "%";
+                             return percentage;
+                         },
+                         color: '#fff',
+                         font: {
+                             weight: 'bold',
+                             size: 12,
+                         },
+                    }
+                }
+            }
+        });
+
+    }, [activeTab, chartJsStatus, dataLabelsPluginStatus, developerInvestments]);
+
 
     const handleProfileUpdate = (e) => {
         setUserData({...userData, [e.target.name]: e.target.value});
@@ -1620,7 +1852,7 @@ const DeveloperDashboard = ({ projects, setProjects, currentUser, onUserUpdate }
     };
 
     const handleWithdraw = () => {
-        const developerAmount = managingProject.amountRaised * 0.98;
+        const developerAmount = managingProject.amountRaised * 0.97;
         
         setProjects(prev => prev.map(p => p.id === managingProject.id ? {...p, status: 'Paying APY'} : p));
         setManagingProject(null);
@@ -1640,7 +1872,7 @@ const DeveloperDashboard = ({ projects, setProjects, currentUser, onUserUpdate }
 
     const developerFaqs = [
         { q: "What are the requirements for submitting a project?", a: "To submit a project, you must be a registered and KYC-verified developer. Your project proposal should include a detailed description, financial projections (total valuation, funding goal), expected APY, and legal documentation." },
-        { q: "What is the platform fee for developers?", a: "We charge a 2% fee on the total funds successfully raised for your project. This fee is automatically deducted when you withdraw the funds." },
+        { q: "What is the platform fee for developers?", a: "We charge a 3% fee on the total funds successfully raised for your project. This fee is automatically deducted when you withdraw the funds. A 1.5% transaction fee applies to secondary market trades, but APY deposits are exempt from this fee." },
         { q: "How do I withdraw funds once my project is fully funded?", a: "Once your project's funding goal is met, the 'Withdraw Funds' button will become active in your 'My Projects' management panel. The funds (minus the platform fee) will be transferred to your registered treasury wallet." },
         { q: "How do APY payments work?", a: "For funded projects, you are responsible for depositing the total monthly APY payment in USDT into the platform. You can do this from the 'Manage' section of your project. We then calculate and handle the distribution to each individual investor based on their stake." }
     ];
@@ -1689,6 +1921,10 @@ const DeveloperDashboard = ({ projects, setProjects, currentUser, onUserUpdate }
                                            <div className="w-full bg-gray-600 rounded-full h-2.5">
                                                <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${(p.amountRaised / p.fundingGoal) * 100}%` }}></div>
                                            </div>
+                                           <div className="flex justify-between items-center text-xs text-gray-400 mt-1">
+                                                <span>Target: ${p.fundingGoal.toLocaleString()}</span>
+                                                <span className="font-semibold">Remaining: <span className="text-white">${(p.fundingGoal - p.amountRaised).toLocaleString()}</span></span>
+                                           </div>
                                         </div>
                                       ))}
                                     </div>
@@ -1710,6 +1946,14 @@ const DeveloperDashboard = ({ projects, setProjects, currentUser, onUserUpdate }
                             </div>
                              {/* Column 3 */}
                             <div className="lg:col-span-3 xl:col-span-1 space-y-6">
+                                {developerInvestments.length > 0 && (
+                                    <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
+                                        <h3 className="font-semibold text-white text-lg mb-4">My Token Investments</h3>
+                                        <div className="h-64 relative">
+                                            <canvas ref={tokenAllocationChartRef}></canvas>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
                                     <h3 className="font-semibold text-white text-lg mb-4">Financial Summary</h3>
                                     <div className="space-y-3">
@@ -2036,9 +2280,9 @@ const DeveloperDashboard = ({ projects, setProjects, currentUser, onUserUpdate }
                             <h4 className="font-semibold text-white mb-2">Withdraw Funds</h4>
                             <p className="text-sm text-gray-400 mb-4">Once a project is fully funded, you can withdraw the raised capital. Funds will be sent to your registered Treasury Payout Address.</p>
                             <button onClick={handleWithdraw} disabled={managingProject.status !== 'Funded'} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:bg-gray-500 disabled:cursor-not-allowed">
-                                {managingProject.status === 'Funded' ? `Withdraw $${(managingProject.amountRaised * 0.98).toLocaleString()}` : 'Project not fully funded'}
+                                {managingProject.status === 'Funded' ? `Withdraw $${(managingProject.amountRaised * 0.97).toLocaleString()}` : 'Project not fully funded'}
                             </button>
-                             <p className="text-xs text-center text-gray-400 mt-2">A 2% platform fee will be deducted. </p>
+                             <p className="text-xs text-center text-gray-400 mt-2">A 3% platform fee will be deducted. </p>
                         </div>
                         <div className="bg-gray-700/50 p-4 rounded-lg">
                             <h4 className="font-semibold text-white mb-2">Deposit Monthly APY</h4>
@@ -2240,6 +2484,7 @@ const InvestorDashboard = ({ projects, setProjects, currentUser, onUserUpdate })
         { q: "What is property tokenization?", a: "Property tokenization is the process of converting the rights to a real estate asset into a digital token on a blockchain. This allows for fractional ownership, meaning you can buy and own a small piece of a larger property, making real estate investing more accessible." },
         { q: "How do I earn returns on my investment?", a: "You earn returns primarily through the annual percentage yield (APY) paid out from the property's income (e.g., rent). When developers deposit APY funds, you can claim your proportional share directly to your wallet." },
         { q: "Is my investment secure?", a: "Every project on QuantuHome is backed by a real, physical asset. Your ownership is recorded on a secure blockchain, ensuring transparency. We conduct rigorous due diligence on all listed properties." },
+        { q: "What are the fees on QuantuHome?", a: "QuantuHome charges a 1.5% transaction fee on all platform transactions, including investments, trades, and withdrawals. This fee helps us maintain the platform and ensure its security. There are no hidden fees." },
         { q: "Why do I need to complete KYC?", a: "Know Your Customer (KYC) is a mandatory regulatory requirement. It helps us prevent fraud and comply with Anti-Money Laundering (AML) laws, ensuring a secure platform for all users." }
     ];
 
@@ -2439,16 +2684,27 @@ const InvestorDashboard = ({ projects, setProjects, currentUser, onUserUpdate })
                             {investorProjects.map(p => {
                                 const userInvestment = p.investors[currentUser.id];
                                 const canClaim = p.apyFundsDeposited > 0 && !p.apyClaimedBy[currentUser.id];
+                                const lockupEndDate = p.fundingDate ? new Date(new Date(p.fundingDate).setMonth(new Date(p.fundingDate).getMonth() + p.term)) : null;
+
                                 return (
-                                    <div key={p.id} className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 flex flex-col sm:flex-row items-center justify-between">
-                                        <div>
-                                            <h4 className="text-xl font-bold text-white">{p.name}</h4>
-                                            <p className="text-gray-300 mt-1">Your Investment: <span className="font-semibold text-green-400">${userInvestment.toLocaleString()}</span></p>
-                                            <p className="text-sm text-gray-400">Project APY: {p.apy}%</p>
+                                    <div key={p.id} className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                                        <div className="w-full">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <h4 className="text-xl font-bold text-white">{p.name}</h4>
+                                                    <p className="text-gray-300 mt-1">Your Investment: <span className="font-semibold text-green-400">${userInvestment.toLocaleString()}</span></p>
+                                                    <p className="text-sm text-gray-400">Project APY: {p.apy}%</p>
+                                                </div>
+                                                 <button onClick={() => handleClaimApy(p.id)} disabled={!canClaim} className="flex-shrink-0 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition disabled:bg-gray-500 disabled:cursor-not-allowed">
+                                                    {p.apyClaimedBy[currentUser.id] ? 'Claimed' : 'Claim APY'}
+                                                </button>
+                                            </div>
+                                            {lockupEndDate && (
+                                                <div className="mt-4 pt-4 border-t border-gray-700/50">
+                                                    <CountdownTimer targetDate={lockupEndDate} />
+                                                </div>
+                                            )}
                                         </div>
-                                        <button onClick={() => handleClaimApy(p.id)} disabled={!canClaim} className="mt-4 sm:mt-0 w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition disabled:bg-gray-500 disabled:cursor-not-allowed">
-                                            {p.apyClaimedBy[currentUser.id] ? 'Claimed' : 'Claim APY'}
-                                        </button>
                                     </div>
                                 )
                             })}
@@ -2819,6 +3075,9 @@ export default function App() {
             return null;
     }
 }
+
+
+
 
 
 
