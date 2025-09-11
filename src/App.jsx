@@ -1,696 +1,556 @@
-  import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
-// --- MOCK DATA ---
-// In a real application, this data would come from a database and smart contracts.
+// --- MOCK DATA --- //
+// In a real application, this data would come from a secure backend and blockchain.
+
+const initialUsers = {
+  'investor@demo.com': { 
+    id: 1, 
+    type: 'investor', 
+    name: 'Ada Lovelace', 
+    email: 'investor@demo.com', 
+    password: 'password123', 
+    wallet: { usd: 50000, ngn: 5000000, usdt: 1250.50, usdc: 800.25 },
+    kycStatus: 'Verified', // 'Not Submitted', 'Pending', 'Verified'
+    twoFactorEnabled: true,
+  },
+  'developer@demo.com': { 
+    id: 2, 
+    type: 'developer', 
+    name: 'Charles Babbage', 
+    email: 'developer@demo.com', 
+    password: 'password123', 
+    wallet: { usd: 10000, ngn: 1200000, usdt: 500, usdc: 100 },
+    companyProfile: {
+        name: 'Babbage Constructions Ltd.',
+        regNumber: 'RC123456',
+        address: '1 Innovation Drive, Yaba, Lagos',
+        website: 'https://babbageconstructions.com',
+    },
+    twoFactorEnabled: false,
+    treasuryAddress: '0x1234ABCD5678EFGH9101KLMN1213OPQR1415STUV', // Collected during KYC
+  },
+  'admin@demo.com': { id: 3, type: 'admin', name: 'Admin Grace Hopper', email: 'admin@demo.com', password: 'password123', wallet: { usd: 0, ngn: 0, usdt: 0, usdc: 0 } },
+  'buyer@demo.com': { 
+    id: 4, 
+    type: 'investor', 
+    name: 'Bayo Adekunle', 
+    email: 'buyer@demo.com', 
+    password: 'password123', 
+    wallet: { usd: 75000, ngn: 2500000, usdt: 2000, usdc: 1500 },
+    kycStatus: 'Not Submitted',
+    twoFactorEnabled: false,
+  },
+};
+
 const initialProjects = [
   {
     id: 1,
-    name: 'Lekki Pearl Residence',
-    developerId: 'dev1',
-    description: 'A collection of 5-bedroom duplexes in the heart of Lekki Phase 1, offering premium amenities and high ROI.',
-    fundingGoal: 500000,
-    amountRaised: 450000,
-    apy: 12.5,
-    status: 'Funding', // Funding, Funded, Paying APY, Completed, Suspended, Pending
-    investors: {
-      'investor1': 25000,
-      'investor2': 10000,
-    },
-    apyFundsDeposited: 0,
-    apyClaimedBy: {},
-    image: 'https://placehold.co/800x600/0D1117/FFFFFF?text=Lekki+Pearl',
+    title: 'Lekki Pearl Residence',
+    tokenTicker: 'LPR',
+    tokenSupply: 250000,
+    developerId: 2,
+    developerName: 'Charles Babbage',
+    location: 'Lekki, Lagos',
+    fundingGoal: 250000,
+    amountRaised: 250000, // Fully funded
+    apy: 15,
+    term: 24, // months
+    startDate: '2024-03-01T00:00:00Z',
+    description: 'A premium residential complex featuring 50 luxury apartments with state-of-the-art facilities. Located in the heart of Lekki, it promises high rental yield and capital appreciation. The property includes a swimming pool, a fully-equipped gym, and 24/7 security.',
+    imageUrl: 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?q=80&w=2000',
     images: [
-        'https://placehold.co/800x600/0D1117/FFFFFF?text=Lekki+Pearl',
-        'https://placehold.co/800x600/1E293B/FFFFFF?text=Living+Room',
-        'https://placehold.co/800x600/374151/FFFFFF?text=Bedroom',
-        'https://placehold.co/800x600/4B5563/FFFFFF?text=Kitchen',
+        'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?q=80&w=2000',
+        'https://images.unsplash.com/photo-1600585152220-90363fe7e115?q=80&w=2000',
+        'https://images.unsplash.com/photo-1570129477492-45c003edd2e7?q=80&w=2000',
+        'https://images.unsplash.com/photo-1605276374104-5de67d60924f?q=80&w=2000',
     ],
-    tokenSupply: 500000,
-    ticker: 'LPR',
-    term: 24,
-    fundingDate: null,
+    status: 'funded', // 'pending', 'active', 'funded', 'completed'
+    projectWalletBalance: 5000, // For APY payments
   },
   {
     id: 2,
-    name: 'Eko Atlantic Tower',
-    developerId: 'dev1',
-    description: 'Luxury apartments in the prestigious Eko Atlantic City, with breathtaking ocean views and state-of-the-art facilities.',
-    fundingGoal: 1200000,
-    amountRaised: 1200000,
-    apy: 15,
-    status: 'Funded',
-    investors: {
-      'investor1': 50000,
-    },
-    apyFundsDeposited: 0,
-    apyClaimedBy: {},
-    image: 'https://placehold.co/800x600/0D1117/FFFFFF?text=Eko+Tower',
-    images: [
-        'https://placehold.co/800x600/0D1117/FFFFFF?text=Eko+Tower',
-        'https://placehold.co/800x600/1E293B/FFFFFF?text=Ocean+View',
-        'https://placehold.co/800x600/374151/FFFFFF?text=Penthouse',
-        'https://placehold.co/800x600/4B5563/FFFFFF?text=Lobby',
-    ],
+    title: 'Eko Atlantic Tower',
+    tokenTicker: 'EAT',
     tokenSupply: 1000000,
-    ticker: 'EAT',
+    developerId: 2,
+    developerName: 'Charles Babbage',
+    location: 'Eko Atlantic, Lagos',
+    fundingGoal: 1000000,
+    amountRaised: 450000,
+    apy: 18,
     term: 36,
-    fundingDate: '2023-11-01T10:00:00Z',
+    startDate: '2023-09-10T00:00:00Z',
+    description: 'A visionary skyscraper that will redefine the Lagos skyline. This mixed-use development includes commercial, residential, and recreational spaces, offering unparalleled views and luxury living.',
+    imageUrl: 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=2000',
+    images: [
+        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=2000',
+        'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=2000',
+        'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?q=80&w=2000',
+    ],
+    status: 'active',
+    projectWalletBalance: 12000,
   },
   {
     id: 3,
-    name: 'Abuja Smart Estate',
-    developerId: 'dev2',
-    description: 'An eco-friendly estate in Abuja featuring smart homes powered by renewable energy.',
-    fundingGoal: 750000,
-    amountRaised: 250000,
-    apy: 14,
-    status: 'Funding',
-    investors: {
-       'investor2': 20000,
-       'dev1': 15000,
-    },
-    apyFundsDeposited: 0,
-    apyClaimedBy: {},
-    image: 'https://placehold.co/800x600/0D1117/FFFFFF?text=Abuja+Estate',
-    images: [
-        'https://placehold.co/800x600/0D1117/FFFFFF?text=Abuja+Estate',
-        'https://placehold.co/800x600/1E293B/FFFFFF?text=Solar+Panels',
-        'https://placehold.co/800x600/374151/FFFFFF?text=Smart+Home+Interior',
-    ],
-    tokenSupply: 750000,
-    ticker: 'ASE',
+    title: 'Abuja Smart City Villas',
+    tokenTicker: 'ASV',
+    tokenSupply: 500000,
+    developerId: 2,
+    developerName: 'Charles Babbage',
+    location: 'Gwarinpa, Abuja',
+    fundingGoal: 500000,
+    amountRaised: 150000,
+    apy: 16.5,
     term: 30,
-    fundingDate: null,
-  },
-   {
-    id: 4,
-    name: 'Ikoyi Gardens',
-    developerId: 'dev1',
-    description: 'Exclusive residential complex with lush gardens and premium facilities in Ikoyi.',
-    fundingGoal: 900000,
-    amountRaised: 900000,
-    apy: 13,
-    status: 'Paying APY',
-    investors: {
-      'investor1': 75000,
-      'investor2': 25000,
-    },
-    apyFundsDeposited: 9750, // 13% of 900k is 117k/yr. 117k/12 is 9750/month
-    apyClaimedBy: {},
-    image: 'https://placehold.co/800x600/0D1117/FFFFFF?text=Ikoyi+Gardens',
+    description: 'An exclusive community of 20 smart homes in a serene district of Abuja, designed for modern living and sustainable luxury. Each villa is equipped with the latest smart home technology for comfort and security.',
+    imageUrl: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2000',
     images: [
-        'https://placehold.co/800x600/0D1117/FFFFFF?text=Ikoyi+Gardens',
-        'https://placehold.co/800x600/1E293B/FFFFFF?text=Poolside',
-        'https://placehold.co/800x600/374151/FFFFFF?text=Garden+View',
+        'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=2000',
+        'https://images.unsplash.com/photo-1600585153492-3f19d532b259?q=80&w=2000',
+        'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2000',
     ],
-    tokenSupply: 450000,
-    ticker: 'IKG',
-    term: 24,
-    fundingDate: '2024-05-15T14:30:00Z',
+    status: 'active',
+    projectWalletBalance: 0,
   },
-   {
-    id: 5,
-    name: 'Port Harcourt Tech Hub',
-    developerId: 'dev2',
-    description: 'A modern commercial complex designed for tech companies and startups.',
-    fundingGoal: 650000,
-    amountRaised: 0,
-    apy: 16,
-    status: 'Pending',
-    investors: {},
-    apyFundsDeposited: 0,
-    apyClaimedBy: {},
-    image: 'https://placehold.co/800x600/0D1117/FFFFFF?text=PH+Tech+Hub',
-    images: [
-        'https://placehold.co/800x600/0D1117/FFFFFF?text=PH+Tech+Hub',
-        'https://placehold.co/800x600/1E293B/FFFFFF?text=Office+Space',
-        'https://placehold.co/800x600/374151/FFFFFF?text=Exterior+View',
-    ],
-    tokenSupply: 650000,
-    ticker: 'PHT',
-    term: 48,
-    fundingDate: null,
-  }
 ];
 
-const users = {
-  admin: { id: 'admin', role: 'Admin', name: 'Admin User', dateJoined: '2023-01-01', status: 'Active', twoFactorEnabled: false },
-  dev1: { id: 'dev1', role: 'Developer', name: 'Metro Builders', kycVerified: true, onboarded: true, companyProfile: 'Metro Builders is a leading developer in Lagos...', twoFactorEnabled: false, treasuryWallet: '0x1234AbcDefa1234AbcDefa1234AbcDefa1234AbcDef', dateJoined: '2023-02-15', status: 'Active' },
-  dev2: { id: 'dev2', role: 'Developer', name: 'Future Homes Ltd.', kycVerified: false, onboarded: false, companyProfile: '', twoFactorEnabled: false, treasuryWallet: '', dateJoined: '2023-03-10', status: 'Active' },
-  investor1: { id: 'investor1', role: 'Investor', name: 'Ada Okoro', kycVerified: true, twoFactorEnabled: false, dateJoined: '2023-04-20', status: 'Active' },
-  investor2: { id: 'investor2', role: 'Investor', name: 'Bayo Adekunle', kycVerified: false, twoFactorEnabled: true, dateJoined: '2023-05-01', status: 'Active' },
+// This structure represents token ownership.
+const initialPortfolios = {
+  1: { // Ada Lovelace's portfolio
+    tokens: [
+      { tokenId: 'proj1-sec-1', projectId: 1, type: 'SECURITY', amount: 5000, originalOwnerId: 1, lastApyClaimDate: '2025-08-05T00:00:00Z' },
+      { tokenId: 'proj1-mkt-1', projectId: 1, type: 'MARKET', amount: 5000, ownerId: 1, status: 'held' }, // status: 'held' or 'listed'
+      { tokenId: 'proj2-sec-1', projectId: 2, type: 'SECURITY', amount: 10000, originalOwnerId: 1, lastApyClaimDate: '2025-09-01T00:00:00Z' },
+      { tokenId: 'proj2-mkt-1', projectId: 2, type: 'MARKET', amount: 10000, ownerId: 1, status: 'held' },
+    ]
+  },
+  4: { // Bayo Adekunle's portfolio
+    tokens: [
+        { tokenId: 'proj1-sec-2', projectId: 1, type: 'SECURITY', amount: 2500, originalOwnerId: 4, lastApyClaimDate: '2025-07-20T00:00:00Z' },
+        { tokenId: 'proj1-mkt-2', projectId: 1, type: 'MARKET', amount: 2500, ownerId: 4, status: 'held' },
+    ]
+  }
 };
 
-const initialNotifications = [
-      { id: 1, userId: 'investor1', text: 'Your KYC has been approved!', read: false, time: new Date(Date.now() - 2 * 60 * 60 * 1000) },
-      { id: 2, userId: 'investor1', text: 'You successfully claimed APY from Ikoyi Gardens.', read: false, time: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-      { id: 3, userId: 'dev1', text: 'Your project "Eko Atlantic Tower" has been fully funded!', read: false, time: new Date(Date.now() - 5 * 60 * 60 * 1000) },
-      { id: 4, userId: 'dev1', text: 'A new investor has backed Lekki Pearl Residence.', read: true, time: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) },
-      { id: 5, userId: 'admin', text: 'New KYC submission from Bayo Adekunle.', read: false, time: new Date(Date.now() - 15 * 60 * 1000) },
+// Represents tokens listed on the secondary market
+const initialMarketListings = [
+    { listingId: 1, tokenId: 'proj2-mkt-1', sellerId: 1, projectId: 2, amount: 2000, price: 2100 } // Ada is selling 2000 of her market tokens for project 2 at a premium
 ];
 
-// --- SVG ICONS ---
-const ProjectIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>;
-const DashboardIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>;
-const PortfolioIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>;
-const SettingsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>;
-const CloseIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>;
-const CheckCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>;
-const XCircleIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>;
-const ShieldCheckIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 20.944L12 22l9-1.056v-9.468c0-1.03-.42-2.003-1.172-2.712z" /></svg>;
-const CurrencyDollarIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01M12 16v-1m0-1v.01M4 4h16v16H4V4z" /></svg>;
-const GlobeIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2h8a2 2 0 002-2v-1a2 2 0 012-2h1.945M7.938 6.128a9.001 9.001 0 111-1.256M12 21a9.003 9.003 0 008.878-7.372M3.122 13.628A9.003 9.003 0 0012 21.001" /></svg>;
-const MarketplaceIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2l-7 7-7-7m14 11V10a1 1 0 00-1-1h-3" /></svg>;
-const WalletIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>;
-const HelpIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.546-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
-const SubmitProjectIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>;
-const AnalyticsIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" /></svg>;
-const TwitterIcon = () => <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"></path></svg>;
-const FacebookIcon = () => <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"></path></svg>;
-const LinkedInIcon = () => <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5V5c0-2.761-2.238-5-5-5zm-11 19H3V9h5v10zm-2.5-11.26c-1.24 0-2.25-1.009-2.25-2.25s1.01-2.25 2.25-2.25 2.25 1.009 2.25 2.25-1.01 2.25-2.25 2.25zm13.5 11.26H15V13.25c0-1.38-.028-3.15-1.921-3.15-1.921 0-2.215 1.5-2.215 3.05V19H7V9h4.76v2.16h.067c.65-1.23 2.24-2.52 4.69-2.52 5.02 0 5.95 3.3 5.95 7.58V19z"></path></svg>;
-const PaperclipIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>;
-const DownloadIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>;
-const UsersIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M15 21a6 6 0 00-9-5.197m0 0A5.975 5.975 0 0112 13a5.975 5.975 0 013 1.803" /></svg>;
-const ShieldExclamationIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 20.944L12 22l9-1.056v-9.468c0-1.03-.42-2.003-1.172-2.712z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v4m0 4h.01" /></svg>;
-const BellSVG = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>;
-const ChevronLeftIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>;
-const ChevronRightIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>;
-const Spinner = () => (
-    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-    </svg>
+
+// --- SVG ICONS AS REACT COMPONENTS --- //
+const BuildingIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h16"/><path d="M2 11h20"/><path d="M3 22V6l8-4 8 4v16"/><path d="M15 22V11l-7-3.5L1 11v11"/><path d="M11 22V11"/><path d="m11 6.5-4 2"/><path d="m19 6.5-4 2"/></svg>
+);
+const UserIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+);
+const DollarSignIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+);
+const LogOutIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+);
+const ArrowRightIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+);
+const CheckCircleIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+);
+const ClockIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+);
+const TrendingUpIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+);
+const ZapIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+);
+const ShieldCheckIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+);
+const EyeIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+);
+const SettingsIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2.4l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2.4l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+);
+const RepeatIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+);
+const WalletIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h12v-6"/><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"/></svg>
+);
+const ArrowDownLeftIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m17 17-10-10"/><path d="M17 7v10H7"/></svg>
+);
+const ArrowUpRightIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17V7h10"/><path d="M7 7l10 10"/></svg>
+);
+const ClipboardIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+);
+const XIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+);
+const ArrowLeftIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+);
+const FileUpIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+);
+const LifeBuoyIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle><line x1="4.93" y1="4.93" x2="9.17" y2="9.17"></line><line x1="14.83" y1="14.83" x2="19.07" y2="19.07"></line><line x1="14.83" y1="9.17" x2="19.07" y2="4.93"></line><line x1="14.83" y1="9.17" x2="18.36" y2="5.64"></line><line x1="4.93" y1="19.07" x2="9.17" y2="14.83"></line></svg>
+);
+const ChevronDownIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+);
+const PaperclipIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+);
+
+const TwitterIcon = (props) => (
+  <svg {...props} viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg>
+);
+const LinkedinIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+);
+const InstagramIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
 );
 
 
-// --- UTILITY FUNCTIONS ---
-const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-};
+const LockupTimer = ({ endDate }) => {
+    const calculateTimeLeft = () => {
+        const difference = +new Date(endDate) - +new Date();
+        let timeLeft = {};
 
-const formatRelativeTime = (date) => {
-    const now = new Date();
-    const seconds = Math.round((now - date) / 1000);
-    const minutes = Math.round(seconds / 60);
-    const hours = Math.round(minutes / 60);
-    const days = Math.round(hours / 24);
-
-    if (seconds < 60) return `${seconds}s ago`;
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
-}
-
-// --- CUSTOM HOOK FOR SCRIPT LOADING ---
-const useScript = (src) => {
-    const [status, setStatus] = useState(src ? "loading" : "idle");
-
-    useEffect(() => {
-        if (!src) {
-            setStatus("idle");
-            return;
-        }
-
-        let script = document.querySelector(`script[src="${src}"]`);
-
-        if (!script) {
-            script = document.createElement("script");
-            script.src = src;
-            script.async = true;
-            script.setAttribute("data-status", "loading");
-            document.body.appendChild(script);
-
-            const setAttributeFromEvent = (event) => {
-                script.setAttribute(
-                    "data-status",
-                    event.type === "load" ? "ready" : "error"
-                );
+        if (difference > 0) {
+            timeLeft = {
+                days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+                hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
+                minutes: Math.floor((difference / 1000 / 60) % 60),
+                seconds: Math.floor((difference / 1000) % 60),
             };
-
-            script.addEventListener("load", setAttributeFromEvent);
-            script.addEventListener("error", setAttributeFromEvent);
-        } else {
-            setStatus(script.getAttribute("data-status"));
         }
+        return timeLeft;
+    };
 
-        const setStateFromEvent = (event) => {
-            setStatus(event.type === "load" ? "ready" : "error");
-        };
-
-        script.addEventListener("load", setStateFromEvent);
-        script.addEventListener("error", setStateFromEvent);
-
-        return () => {
-            if (script) {
-        script.removeEventListener("load", setStateFromEvent);
-        script.removeEventListener("error", setStateFromEvent);
-    }
-  };
- }, [src]);
-
- return status;
-};
-
-const useCountdown = (targetDate) => {
-    const countDownDate = new Date(targetDate).getTime();
-
-    const [countDown, setCountDown] = useState(
-        countDownDate - new Date().getTime()
-    );
+    const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setCountDown(countDownDate - new Date().getTime());
+        const timer = setTimeout(() => {
+            setTimeLeft(calculateTimeLeft());
         }, 1000);
 
-        return () => clearInterval(interval);
-    }, [countDownDate]);
+        return () => clearTimeout(timer);
+    });
 
-    return getReturnValues(countDown);
-};
-
-const getReturnValues = (countDown) => {
-    // calculate time left
-    const days = Math.floor(countDown / (1000 * 60 * 60 * 24));
-    const hours = Math.floor(
-        (countDown % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
-    );
-    const minutes = Math.floor((countDown % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((countDown % (1000 * 60)) / 1000);
-
-    return [days, hours, minutes, seconds];
-};
-
-
-// --- HELPER COMPONENTS ---
-
-const CountdownTimer = ({ targetDate }) => {
-    const [days, hours, minutes, seconds] = useCountdown(targetDate);
-
-    if (days + hours + minutes + seconds <= 0) {
-        return <div className="flex items-center"><span className="font-semibold text-green-400">Lock-up Period Ended</span></div>;
+    if (!Object.keys(timeLeft).length) {
+        return <span className="text-green-600 font-semibold">Lockup Ended</span>;
     }
 
     return (
-        <div className="flex items-center space-x-2 text-sm text-gray-400">
-            <span>Lock-up ends in:</span>
-            <span className="font-mono font-semibold text-white bg-gray-700/50 px-2 py-1 rounded-md">{String(days).padStart(2, '0')}d</span>
-            <span className="font-mono font-semibold text-white bg-gray-700/50 px-2 py-1 rounded-md">{String(hours).padStart(2, '0')}h</span>
-            <span className="font-mono font-semibold text-white bg-gray-700/50 px-2 py-1 rounded-md">{String(minutes).padStart(2, '0')}m</span>
-            <span className="font-mono font-semibold text-white bg-gray-700/50 px-2 py-1 rounded-md">{String(seconds).padStart(2, '0')}s</span>
+        <div className="text-sm text-gray-700 font-mono">
+            <span>{String(timeLeft.days).padStart(2, '0')}d </span>
+            <span>{String(timeLeft.hours).padStart(2, '0')}h </span>
+            <span>{String(timeLeft.minutes).padStart(2, '0')}m </span>
+            <span>{String(timeLeft.seconds).padStart(2, '0')}s</span>
         </div>
     );
 };
 
-const Modal = ({ children, onClose, title, maxWidth = 'max-w-5xl' }) => (
-  <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-40 p-4">
-    <div className={`bg-gray-800 rounded-lg shadow-2xl p-6 sm:p-8 w-full ${maxWidth} border border-gray-700`}>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">{title}</h2>
-        <button onClick={onClose} className="text-gray-400 hover:text-white transition">
-          <CloseIcon />
-        </button>
-      </div>
-      <div>{children}</div>
-    </div>
-  </div>
-);
 
-const StatCard = ({ title, value, subtext }) => (
-    <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50 transition hover:border-blue-500/50 hover:bg-gray-800">
-        <h4 className="text-gray-400 text-base font-medium">{title}</h4>
-        <p className="text-4xl font-bold text-white mt-1">{value}</p>
-        {subtext && <p className="text-sm text-gray-500 mt-1">{subtext}</p>}
-    </div>
-);
+// --- HELPER FUNCTIONS --- //
+const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(amount);
+};
 
-const KycPanel = ({ user, setUser }) => {
-    const [status, setStatus] = useState(user.kycVerified ? 'Verified' : 'Not Started');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+const formatNgnCurrency = (amount) => {
+    return new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(amount);
+};
 
 
-    const handleKycSubmit = () => {
-        setIsSubmitting(true);
-        setStatus('Pending');
-        // Simulate API call
-        setTimeout(() => {
-            setStatus('Verified');
-            setUser({...user, kycVerified: true});
-            setIsSubmitting(false);
-        }, 2000);
+// --- UI COMPONENTS --- //
+
+const Header = ({ page, currentUser, setPage, setCurrentUser }) => {
+    const handleLogout = () => {
+        setCurrentUser(null);
+        setPage('landing');
     };
 
-    return (
-        <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-            <h3 className="text-xl font-semibold mb-4 text-white">KYC Verification</h3>
-            <div className="text-gray-300">
-                <p className="mb-4">To comply with regulations, we need to verify your identity.</p>
-        <div className="flex items-center space-x-4 p-4 rounded-lg bg-gray-700/50 mb-4">
-            <div className={`p-2 rounded-full ${status === 'Verified' ? 'bg-green-500/20' : 'bg-yellow-500/20'}`}>
-               {status === 'Verified' ? <CheckCircleIcon /> : <XCircleIcon />}
-            </div>
-                    <div>
-                        <p className="font-medium text-white">Verification Status</p>
-                        <p className={`font-bold ${status === 'Verified' ? 'text-green-400' : 'text-yellow-400'}`}>{status}</p>
-                    </div>
-                </div>
-                 {status !== 'Verified' && (
-                    <>
-                        <p className="mb-4">Please upload a government-issued ID (e.g., Passport, Driver's License) and a proof of address.</p>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Government ID</label>
-                                <input type="file" className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-300 hover:file:bg-blue-500/20"/>
-                            </div>
-                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Proof of Address</label>
-                                <input type="file" className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-300 hover:file:bg-blue-500/20"/>
-                            </div>
-                        </div>
-                        <button onClick={handleKycSubmit} disabled={isSubmitting} className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:bg-gray-500 flex items-center justify-center">
-                            {isSubmitting ? <><Spinner /> Submitting...</> : 'Submit for Verification'}
-                        </button>
-                    </>
-                 )}
-            </div>
-        </div>
-    );
-};
-
-
-const TwoFactorAuthPanel = ({ user, setUser }) => {
-
-    const handleToggle = () => {
-        setUser({...user, twoFactorEnabled: !user.twoFactorEnabled});
-    };
-    
-    return (
-        <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-            <h3 className="text-xl font-semibold mb-4 text-white">Two-Factor Authentication (2FA)</h3>
-            <div className="flex items-center justify-between">
-                <p className="text-gray-300">Enhance your account security.</p>
-                <div className="flex items-center">
-                    <span className={`mr-3 font-medium ${user.twoFactorEnabled ? 'text-green-400' : 'text-gray-400'}`}>
-                        {user.twoFactorEnabled ? 'Enabled' : 'Disabled'}
-                    </span>
-                    <label htmlFor="2fa-toggle" className="flex items-center cursor-pointer">
-                        <div className="relative">
-                            <input id="2fa-toggle" type="checkbox" className="sr-only" checked={user.twoFactorEnabled || false} onChange={handleToggle} />
-                            <div className="block bg-gray-600 w-14 h-8 rounded-full"></div>
-                            <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform ${user.twoFactorEnabled ? 'translate-x-full bg-blue-400' : ''}`}></div>
-                        </div>
-                    </label>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const DeveloperOnboarding = ({ user, setUser }) => {
-    const [treasuryWallet, setTreasuryWallet] = useState('');
-
-    const handleComplete = () => {
-        setUser({ ...user, onboarded: true, treasuryWallet });
+    const getDashboardLink = () => {
+        if (!currentUser) return 'landing';
+        switch (currentUser.type) {
+            case 'investor': return 'investorDashboard';
+            case 'developer': return 'developerDashboard';
+            case 'admin': return 'adminDashboard';
+            default: return 'landing';
+        }
     };
 
-    return (
-        <Modal title="Welcome to QuantuHome, Developer!" onClose={() => {}} maxWidth="max-w-2xl">
-            <div className="text-gray-300">
-                <p className="mb-4">Let's get your account set up so you can start creating projects.</p>
-                <div className="space-y-4">
-                    <div className="bg-gray-700/50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-white mb-2">Step 1: Complete KYC</h4>
-                        <p className="text-sm mb-2">We need to verify your company's identity to ensure a secure platform for investors.</p>
-                         <KycPanel user={user} setUser={setUser}/>
-                    </div>
-                     <div className="bg-gray-700/50 p-4 rounded-lg">
-                        <h4 className="font-semibold text-white mb-2">Step 2: Set up Treasury Payout Address</h4>
-                        <p className="text-sm mb-2">This is the permanent, verified address where project funds (minus platform fees) will be sent. Please ensure this is a highly secure wallet (e.g., a multi-signature or hardware wallet).</p>
-                        <input type="text" value={treasuryWallet} onChange={(e) => setTreasuryWallet(e.target.value)} placeholder="Enter your secure payout address (e.g., 0x...)" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
-                    </div>
-                </div>
-                 <button 
-                    onClick={handleComplete}
-                    disabled={!user.kycVerified || !treasuryWallet}
-                    className="mt-8 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition disabled:bg-gray-500 disabled:cursor-not-allowed">
-                    { !user.kycVerified ? 'Please complete KYC first' : !treasuryWallet ? 'Please enter a treasury address' : 'Complete Onboarding' }
-                </button>
-            </div>
-        </Modal>
-    );
-};
-
-const FAQItem = ({ question, answer }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    return (
-        <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-hidden">
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full text-left p-6 flex justify-between items-center"
-            >
-                <h3 className="text-lg font-semibold text-white">{question}</h3>
-                <svg className={`w-6 h-6 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-            </button>
-            <div className={`transition-all duration-300 ease-in-out ${isOpen ? 'max-h-96' : 'max-h-0'}`}>
-                <div className="px-6 pb-6 text-gray-400">
-                    {answer}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-// --- LANDING PAGE COMPONENTS ---
-
-const LandingPage = ({ onEnterApp }) => {
-
-    const handleScroll = (e, targetId) => {
-        e.preventDefault();
-        const targetElement = document.getElementById(targetId);
-        if (targetElement) {
-            targetElement.scrollIntoView({ behavior: 'smooth' });
+    const handleScrollTo = (id) => {
+        if (page !== 'landing') {
+            setPage('landing');
+            // Wait for the landing page to render before scrolling
+            setTimeout(() => {
+                document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        } else {
+            document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
         }
     };
 
     return (
-        <div className="bg-gray-900 text-white min-h-screen font-sans" style={{fontFamily: "'Exo 2', sans-serif"}}>
-             <style>{`
-                @import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,100..900;1,100..900&display=swap');
-            `}</style>
-            {/* Header */}
-            <header className="bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 p-4 lg:px-8 flex justify-between items-center sticky top-0 z-40">
-                <div className="flex items-center space-x-3">
-                    <svg className="w-8 h-8 text-blue-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-                    <h1 className="text-2xl font-bold">QuantuHome</h1>
-                </div>
-
-                <nav className="hidden lg:flex items-center space-x-8">
-                     <a href="#home" onClick={(e) => handleScroll(e, 'home')} className="font-semibold text-gray-300 hover:text-white transition">Home</a>
-                     <a href="#how-it-works" onClick={(e) => handleScroll(e, 'how-it-works')} className="font-semibold text-gray-300 hover:text-white transition">How it works</a>
-                     <a href="#projects" onClick={(e) => handleScroll(e, 'projects')} className="font-semibold text-gray-300 hover:text-white transition">Projects</a>
-                     <a href="#about" onClick={(e) => handleScroll(e, 'about')} className="font-semibold text-gray-300 hover:text-white transition">About</a>
-                     <a href="#compliance" onClick={(e) => handleScroll(e, 'compliance')} className="font-semibold text-gray-300 hover:text-white transition">Compliance</a>
-                </nav>
-
-                <div className="flex items-center space-x-4">
-                    <button onClick={onEnterApp} className="font-semibold text-gray-300 hover:text-white transition">Log In</button>
-                    <button onClick={onEnterApp} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg transition">Register</button>
-                </div>
-            </header>
-
-            {/* Hero Section */}
-            <section id="home" className="text-center py-24 px-4 relative overflow-hidden">
-                <div className="absolute inset-0 bg-grid-gray-800/50 [mask-image:radial-gradient(ellipse_at_center,white_10%,transparent_70%)]"></div>
-                <div className="relative z-10 max-w-4xl mx-auto">
-                    <h2 className="text-5xl md:text-7xl font-extrabold mb-4 leading-tight tracking-tight">The Future of Real Estate Investing is Here.</h2>
-                    <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto mb-8">
-                        Invest in fractional, tokenized real estate in Nigeria. Build your property portfolio with USD stablecoins and hedge against inflation.
-                    </p>
-                    <button onClick={onEnterApp} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg transition shadow-lg shadow-blue-500/20">
-                        Explore Projects
-                    </button>
-                </div>
-            </section>
-            
-            {/* How it Works Section */}
-            <section id="how-it-works" className="py-28 px-4 bg-gray-900/70">
-                <div className="container mx-auto max-w-7xl">
-                    <h2 className="text-4xl lg:text-5xl font-bold text-center mb-20">A Simple, Transparent Process</h2>
-                    <div className="grid md:grid-cols-2 gap-16 items-center">
-                        <div>
-                            <h3 className="text-4xl font-bold text-white mb-8">For Investors</h3>
-                            <div className="space-y-8">
-                                <div className="flex items-start space-x-4">
-                                    <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-blue-500/10 text-blue-400 font-bold text-xl border-2 border-blue-500/30">1</div>
-                                    <div>
-                                        <h4 className="text-2xl font-semibold">Create Account & Fund</h4>
-                                        <p className="text-gray-400 mt-2 text-lg">Sign up in minutes, complete our secure KYC process, and fund your wallet with USD stablecoins (USDT/USDC).</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-start space-x-4">
-                                     <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-blue-500/10 text-blue-400 font-bold text-xl border-2 border-blue-500/30">2</div>
-                                    <div>
-                                        <h4 className="text-2xl font-semibold">Browse & Invest</h4>
-                                        <p className="text-gray-400 mt-2 text-lg">Explore our curated selection of high-yield real estate projects. Invest in fractions of properties you believe in with just a few clicks.</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-start space-x-4">
-                                     <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-blue-500/10 text-blue-400 font-bold text-xl border-2 border-blue-500/30">3</div>
-                                    <div>
-                                        <h4 className="text-2xl font-semibold">Earn & Trade</h4>
-                                        <p className="text-gray-400 mt-2 text-lg">Receive your share of APY payments directly to your wallet in USDT. Trade your property tokens on our upcoming secondary market for liquidity.</p>
-                                    </div>
-                                </div>
-                            </div>
+        <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+            <nav className="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between h-16">
+                    <div className="flex items-center">
+                        <a href="#" onClick={() => setPage('landing')} className="flex-shrink-0 flex items-center gap-2">
+                           <BuildingIcon className="h-8 w-8 text-indigo-600"/>
+                           <span className="text-2xl font-bold text-gray-800">Kayzera</span>
+                        </a>
+                    </div>
+                    <div className="hidden md:block">
+                        <div className="ml-10 flex items-baseline space-x-4">
+                            <a href="#" onClick={() => setPage('landing')} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Home</a>
+                            <a href="#" onClick={() => currentUser ? setPage(getDashboardLink()) : setPage('login')} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Projects</a>
+                            <a href="#about" onClick={(e) => { e.preventDefault(); handleScrollTo('about'); }} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">About Us</a>
+                            <a href="#compliance" onClick={(e) => { e.preventDefault(); handleScrollTo('compliance'); }} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Compliance</a>
                         </div>
-                         <div>
-                            <h3 className="text-4xl font-bold text-white mb-8">For Developers</h3>
-                            <div className="space-y-8">
-                                <div className="flex items-start space-x-4">
-                                    <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-green-500/10 text-green-400 font-bold text-xl border-2 border-green-500/30">1</div>
-                                    <div>
-                                        <h4 className="text-2xl font-semibold">Submit Project</h4>
-                                        <p className="text-gray-400 mt-2 text-lg">Provide your project details through our streamlined portal. Our team conducts a rigorous due diligence process to ensure quality and viability.</p>
+                    </div>
+                    <div className="flex items-center">
+                        {currentUser ? (
+                            <div className="flex items-center ml-4 md:ml-6">
+                                <span className="text-gray-700 text-sm mr-4">Welcome, {currentUser.name.split(' ')[0]}</span>
+                                {currentUser.wallet && (
+                                    <div className="hidden sm:block bg-green-100 text-green-800 text-sm font-bold px-3 py-1.5 rounded-full mr-4">
+                                        {formatCurrency(currentUser.wallet.usd)}
                                     </div>
-                                </div>
-                                <div className="flex items-start space-x-4">
-                                     <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-green-500/10 text-green-400 font-bold text-xl border-2 border-green-500/30">2</div>
-                                    <div>
-                                        <h4 className="text-2xl font-semibold">Raise Funds</h4>
-                                        <p className="text-gray-400 mt-2 text-lg">Once approved, your project is tokenized and listed on our platform. Access a global pool of investors to raise capital in stable, inflation-resistant currency.</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-start space-x-4">
-                                     <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-green-500/10 text-green-400 font-bold text-xl border-2 border-green-500/30">3</div>
-                                    <div>
-                                        <h4 className="text-2xl font-semibold">Build & Manage</h4>
-                                        <p className="text-gray-400 mt-2 text-lg">Withdraw funds to commence your project. Easily manage and distribute APY payments to your investors through your dedicated developer dashboard.</p>
-                                    </div>
-                                </div>
+                                )}
+                                <button onClick={() => setPage(getDashboardLink())} className="p-2 rounded-full text-gray-500 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-2">
+                                    <UserIcon className="h-6 w-6" />
+                                </button>
+                                <button onClick={handleLogout} className="p-2 rounded-full text-gray-500 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    <LogOutIcon className="h-6 w-6" />
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="hidden md:flex items-center space-x-2">
+                                <button onClick={() => setPage('login')} className="text-gray-600 hover:text-indigo-600 px-4 py-2 rounded-md text-sm font-medium">Log In</button>
+                                <button onClick={() => setPage('register')} className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 transition duration-150">Sign Up</button>
+                            </div>
+                        )}
+                         <div className="md:hidden ml-2">
+                             <button className="p-2 rounded-md text-gray-500 hover:text-gray-700">
+                                 <svg className="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                             </button>
+                         </div>
+                    </div>
+                </div>
+            </nav>
+        </header>
+    );
+};
+
+const LandingPage = ({ setPage, projects }) => {
+    return (
+        <div className="bg-gray-50 flex flex-col flex-1">
+            <div className="flex-grow">
+                {/* Hero Section */}
+                <div className="relative overflow-hidden">
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-24 md:py-32">
+                        <div className="text-center">
+                            <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 tracking-tight">
+                                <span className="block">Invest in Nigeria's Future.</span>
+                                <span className="block text-indigo-600">Hedged in USD.</span>
+                            </h1>
+                            <p className="mt-4 max-w-2xl mx-auto text-lg md:text-xl text-gray-600">
+                                Kayzera is a tokenized real estate platform that allows you to buy fractional ownership in premium properties, protecting your capital from inflation.
+                            </p>
+                            <div className="mt-8 flex justify-center gap-4">
+                                <button onClick={() => setPage('register')} className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 shadow-lg">
+                                    Get Started
+                                    <ArrowRightIcon className="ml-2 h-5 w-5" />
+                                </button>
+                                <button className="inline-flex items-center justify-center px-6 py-3 border border-indigo-200 text-base font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50">
+                                    View Projects
+                                </button>
                             </div>
                         </div>
                     </div>
                 </div>
-            </section>
-            
-            {/* Featured Projects */}
-            <section id="projects" className="py-24 px-4">
-                 <div className="container mx-auto max-w-7xl">
-                    <h2 className="text-4xl lg:text-5xl font-bold text-center mb-16">Featured Projects</h2>
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 lg:gap-12">
-                         {initialProjects.slice(0, 4).map(p => (
-                            <div key={p.id} className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700/50 group transition hover:border-blue-500/50 hover:shadow-2xl hover:shadow-blue-500/10">
-                                <img src={p.image} alt={p.name} className="w-full h-64 object-cover" />
-                                <div className="p-6 lg:p-8">
-                                    <h3 className="text-2xl font-bold text-white mb-2">{p.name}</h3>
-                                    <p className="text-gray-400 mb-6">{p.description}</p>
-                                    <div className="flex justify-between items-center text-white mb-2">
-                                        <span>Funding Progress</span>
-                                        <span className="font-semibold">{((p.amountRaised / p.fundingGoal) * 100).toFixed(0)}%</span>
-                                    </div>
-                                    <div className="w-full bg-gray-600 rounded-full h-2.5 mb-6">
-                                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${(p.amountRaised / p.fundingGoal) * 100}%` }}></div>
-                                    </div>
-                                    <div className="flex justify-between text-lg">
-                                        <p className="text-gray-300"><span className="font-bold text-green-400 text-xl">{p.apy}%</span> APY</p>
-                                         <p className="text-gray-300"><span className="font-bold text-white text-xl">${p.amountRaised.toLocaleString()}</span> Raised</p>
-                                    </div>
-                                </div>
-                            </div>
-                         ))}
-                     </div>
-                 </div>
-            </section>
 
-             {/* About Section */}
-            <section id="about" className="py-28 px-4 bg-gray-900/70">
-                 <div className="container mx-auto max-w-4xl text-center">
-                    <h2 className="text-4xl lg:text-5xl font-bold text-center mb-6">Democratizing Real Estate in Africa</h2>
-                    <p className="text-xl text-gray-400 mb-16">
-                        Our mission is to make real estate investment accessible, transparent, and liquid for everyone. We empower Nigerians to build wealth through property ownership, while providing vital capital for the real estate sector, contributing to the nation's economic growth.
-                    </p>
-                    <div className="grid md:grid-cols-3 gap-8 lg:gap-12 text-center">
-                    <div className="bg-gray-800/50 p-8 rounded-xl border border-gray-700/50">
-                        <ShieldCheckIcon />
-                        <h3 className="text-3xl font-bold mt-4 mb-2">Integrity First</h3>
-                        <p className="text-gray-400 text-lg">We operate with complete transparency, leveraging blockchain technology for immutable records and trust.</p>
-                    </div>
-                    <div className="bg-gray-800/50 p-8 rounded-xl border border-gray-700/50">
-                        <CurrencyDollarIcon />
-                        <h3 className="text-3xl font-bold mt-4 mb-2">Innovation-Driven</h3>
-                        <p className="text-gray-400 text-lg">We are pioneers in PropTech, constantly innovating to create value and a seamless user experience.</p>
-                    </div>
-                    <div className="bg-gray-800/50 p-8 rounded-xl border border-gray-700/50">
-                        <GlobeIcon />
-                        <h3 className="text-3xl font-bold mt-4 mb-2">Growth-Focused</h3>
-                        <p className="text-gray-400 text-lg">Our goal is to be the leading and most trusted tokenized real estate platform in Africa, creating value for all stakeholders.</p>
+                {/* Features Section */}
+                <div className="py-16 bg-white">
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-bold text-gray-800">A New Era of Real Estate Investing</h2>
+                            <p className="mt-2 text-lg text-gray-600">Accessible, Liquid, and Secure.</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                            <div className="p-6">
+                                <div className="flex items-center justify-center h-12 w-12 rounded-md bg-indigo-500 text-white mx-auto">
+                                    <DollarSignIcon className="h-6 w-6"/>
+                                </div>
+                                <h3 className="mt-5 text-lg font-medium text-gray-900">Inflation Hedge</h3>
+                                <p className="mt-2 text-base text-gray-500">Invest and earn returns in USD stablecoins, mitigating local currency risks and preserving your wealth.</p>
+                            </div>
+                            <div className="p-6">
+                                <div className="flex items-center justify-center h-12 w-12 rounded-md bg-indigo-500 text-white mx-auto">
+                                    <ZapIcon className="h-6 w-6"/>
+                                </div>
+                                <h3 className="mt-5 text-lg font-medium text-gray-900">Instant Liquidity</h3>
+                                <p className="mt-2 text-base text-gray-500">Our secondary market allows you to trade your "Market Tokens" with other investors before the project term ends.</p>
+                            </div>
+                            <div className="p-6">
+                                <div className="flex items-center justify-center h-12 w-12 rounded-md bg-indigo-500 text-white mx-auto">
+                                    <ShieldCheckIcon className="h-6 w-6"/>
+                                </div>
+                                <h3 className="mt-5 text-lg font-medium text-gray-900">Blockchain Transparency</h3>
+                                <p className="mt-2 text-base text-gray-500">Every transaction is recorded on a secure ledger, ensuring complete transparency and trust for all parties.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                 </div>
-            </section>
 
-             {/* Compliance Section */}
-            <section id="compliance" className="py-28 px-4">
-                <div className="container mx-auto max-w-4xl text-center">
-                    <h2 className="text-4xl lg:text-5xl font-bold text-center mb-6">Built on Trust and Security</h2>
-                     <p className="text-xl text-gray-400 mb-12">
-                        We are committed to operating in full compliance with all relevant Nigerian laws and regulations. Your security is our top priority.
-                    </p>
-                    <div className="bg-gray-800/50 p-10 rounded-xl border border-gray-700/50">
-                        <p className="text-gray-300 text-lg leading-relaxed">
-                        We work closely with the Securities and Exchange Commission (SEC) Nigeria to ensure that our platform meets all requirements for a crowdfunding portal and that our tokenized offerings are structured as compliant securities. We also strictly adhere to all Anti-Money Laundering (AML) and Know Your Customer (KYC) regulations to ensure a secure and legitimate investment environment.
+                {/* Featured Projects Section */}
+                <div className="py-16 bg-gray-50">
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-bold text-gray-800">Featured Investment Opportunities</h2>
+                            <p className="mt-2 text-lg text-gray-600">Carefully vetted projects from reputable developers.</p>
+                        </div>
+                        <div className="grid gap-8 lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1">
+                            {projects.filter(p => p.status === 'active' || p.status === 'funded').slice(0, 3).map(project => (
+                                 <ProjectCard key={project.id} project={project} setPage={setPage} />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                 {/* About Us Section */}
+                <div id="about" className="py-16 bg-white">
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-bold text-gray-800">About Kayzera</h2>
+                             <p className="mt-2 text-lg text-gray-600">
+                                Democratizing real estate investment in Nigeria.
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+                            <div>
+                                <h3 className="text-2xl font-bold text-gray-800 mb-4">Our Mission</h3>
+                                <p className="text-lg text-gray-600 mb-6">
+                                    Our mission is to empower Nigerians to build wealth through property ownership, while also providing a vital source of capital for the real estate sector, contributing to the nation's economic growth.
+                                </p>
+                                <h3 className="text-2xl font-bold text-gray-800 mb-4">Our Vision</h3>
+                                <p className="text-lg text-gray-600">
+                                    To be the leading and most trusted tokenized real estate crowdfunding platform in Africa, known for our innovation, integrity, and commitment to creating value for our stakeholders.
+                                </p>
+                            </div>
+                            <div>
+                                <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2000" alt="Team collaborating" className="rounded-lg shadow-xl"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                 {/* Compliance Section */}
+                <div id="compliance" className="py-16 bg-gray-50">
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl text-center">
+                        <ShieldCheckIcon className="h-16 w-16 mx-auto text-indigo-600" />
+                        <h2 className="mt-4 text-3xl font-bold text-gray-800">Legal & Regulatory Compliance</h2>
+                        <p className="mt-4 max-w-2xl mx-auto text-lg text-gray-600">
+                            Operating with integrity and transparency is at the core of our mission.
                         </p>
+                        <div className="mt-12 text-left space-y-8 text-lg text-gray-700">
+                             <p>
+                               We are committed to operating in full compliance with all relevant Nigerian laws and regulations. We believe that a strong regulatory framework is essential for building trust and ensuring the long-term success of our platform and the protection of our users.
+                             </p>
+                             <div className="p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                 <h3 className="font-bold text-xl text-gray-800 mb-2">Regulatory Engagement</h3>
+                                 <p>
+                                    We will work closely with the <span className="font-semibold">Securities and Exchange Commission (SEC) Nigeria</span> to ensure that our platform meets all of the requirements for a crowdfunding portal and that our tokenized offerings are structured as compliant securities.
+                                 </p>
+                             </div>
+                             <div className="p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
+                                  <h3 className="font-bold text-xl text-gray-800 mb-2">Security & User Protection</h3>
+                                 <p>
+                                    We will adhere to all <span className="font-semibold">Anti-Money Laundering (AML)</span> and <span className="font-semibold">Know Your Customer (KYC)</span> regulations. This involves a robust verification process for all users to prevent fraud and ensure a secure investment environment for everyone on the platform.
+                                 </p>
+                             </div>
+                        </div>
                     </div>
                 </div>
-            </section>
-            
-            {/* Footer */}
-            <footer className="bg-gray-800 text-white border-t border-gray-700">
-                <div className="container mx-auto px-6 py-12">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                        <div>
-                            <div className="flex items-center space-x-2">
-                                <svg className="w-8 h-8 text-blue-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-                                <span className="text-xl font-bold">QuantuHome</span>
+
+            </div>
+             {/* Footer */}
+            <footer className="bg-gray-800 text-white">
+                <div className="container mx-auto py-12 px-4 sm:px-6 lg:px-8">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                        <div className="md:col-span-12 lg:col-span-4">
+                            <div className="space-y-4">
+                                <a href="#" onClick={() => setPage('landing')} className="flex-shrink-0 flex items-center gap-2">
+                                    <BuildingIcon className="h-8 w-8 text-indigo-400"/>
+                                    <span className="text-2xl font-bold text-white">Kayzera</span>
+                                </a>
+                                <p className="text-gray-400 text-base max-w-xs">Democratizing real estate for everyone by making it accessible, transparent, and liquid.</p>
                             </div>
-                            <p className="text-gray-400 mt-4 text-sm">Democratizing real estate investment for everyone.</p>
                         </div>
-                        
-                        <div>
-                            <h3 className="font-bold uppercase tracking-wider mb-4">Quick Links</h3>
-                            <ul className="space-y-2 text-sm">
-                                <li><a href="#projects" onClick={(e) => handleScroll(e, 'projects')} className="text-gray-400 hover:text-white transition-colors">Properties</a></li>
-                                <li><a href="#how-it-works" onClick={(e) => handleScroll(e, 'how-it-works')} className="text-gray-400 hover:text-white transition-colors">How It Works</a></li>
-                                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Mobile App</a></li>
-                                <li><a href="#about" onClick={(e) => handleScroll(e, 'about')} className="text-gray-400 hover:text-white transition-colors">About Us</a></li>
+                        <div className="md:col-span-4 lg:col-span-2">
+                            <h3 className="text-sm font-semibold text-gray-300 tracking-wider uppercase">Solutions</h3>
+                            <ul className="mt-4 space-y-4">
+                                <li><a href="#" className="text-base text-gray-400 hover:text-white">For Investors</a></li>
+                                <li><a href="#" className="text-base text-gray-400 hover:text-white">For Developers</a></li>
                             </ul>
                         </div>
-
-                        <div>
-                            <h3 className="font-bold uppercase tracking-wider mb-4">Legal</h3>
-                            <ul className="space-y-2 text-sm">
-                                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Terms of Service</a></li>
-                                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a></li>
-                                <li><a href="#" className="text-gray-400 hover:text-white transition-colors">Risk Disclosure</a></li>
+                        <div className="md:col-span-4 lg:col-span-2">
+                            <h3 className="text-sm font-semibold text-gray-300 tracking-wider uppercase">Company</h3>
+                            <ul className="mt-4 space-y-4">
+                                <li><a href="#about" onClick={(e) => { e.preventDefault(); document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-base text-gray-400 hover:text-white">About</a></li>
+                                <li><a href="#" className="text-base text-gray-400 hover:text-white">Blog</a></li>
+                                <li><a href="#compliance" onClick={(e) => { e.preventDefault(); document.getElementById('compliance')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-base text-gray-400 hover:text-white">Compliance</a></li>
                             </ul>
                         </div>
-
-                        <div>
-                            <h3 className="font-bold uppercase tracking-wider mb-4">Connect With Us</h3>
-                            <div className="flex space-x-4">
-                                <a href="#" className="text-gray-400 hover:text-white transition-colors" aria-label="Twitter"><TwitterIcon/></a>
-                                <a href="#" className="text-gray-400 hover:text-white transition-colors" aria-label="Facebook"><FacebookIcon/></a>
-                                <a href="#" className="text-gray-400 hover:text-white transition-colors" aria-label="LinkedIn"><LinkedInIcon/></a>
+                        <div className="md:col-span-4 lg:col-span-2">
+                             <h3 className="text-sm font-semibold text-gray-300 tracking-wider uppercase">Legal</h3>
+                             <ul className="mt-4 space-y-4">
+                                 <li><a href="#" className="text-base text-gray-400 hover:text-white">Privacy</a></li>
+                                 <li><a href="#" className="text-base text-gray-400 hover:text-white">Terms</a></li>
+                             </ul>
+                        </div>
+                        <div className="md:col-span-12 lg:col-span-2">
+                             <h3 className="text-sm font-semibold text-gray-300 tracking-wider uppercase">Connect With Us</h3>
+                             <div className="mt-4 flex space-x-6">
+                                <a href="#" className="text-gray-400 hover:text-white">
+                                    <span className="sr-only">Twitter</span>
+                                    <TwitterIcon className="h-6 w-6" />
+                                </a>
+                                <a href="#" className="text-gray-400 hover:text-white">
+                                    <span className="sr-only">LinkedIn</span>
+                                    <LinkedinIcon className="h-6 w-6" />
+                                </a>
+                                <a href="#" className="text-gray-400 hover:text-white">
+                                    <span className="sr-only">Instagram</span>
+                                    <InstagramIcon className="h-6 w-6" />
+                                </a>
                             </div>
                         </div>
                     </div>
-                    <div className="border-t border-gray-700 mt-8 pt-6 text-center text-gray-400 text-sm">
-                        <p>&copy; {new Date().getFullYear()} QuantuHome. All Rights Reserved.</p>
+                    <div className="mt-8 border-t border-gray-700 pt-8 text-center">
+                        <p className="text-base text-gray-500">&copy; 2025 Kayzera. All rights reserved.</p>
                     </div>
                 </div>
             </footer>
@@ -698,2391 +558,2318 @@ const LandingPage = ({ onEnterApp }) => {
     );
 };
 
-// --- SHARED DASHBOARD COMPONENTS ---
-const LockIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-auto text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>;
-
-const NavItem = ({ icon, label, tabName, activeTab, setActiveTab, disabled = false }) => (
-    <div className="relative group">
-        <button
-            onClick={() => !disabled && setActiveTab(tabName)}
-            disabled={disabled}
-            className={`flex items-center space-x-3 w-full text-left p-3 rounded-lg transition ${
-                disabled
-                ? 'text-gray-500 cursor-not-allowed'
-                : activeTab === tabName
-                    ? 'bg-blue-600 text-white'
-                    : 'hover:bg-gray-700/50 text-gray-300'
-            }`}
-        >
-            {icon}
-            <span className="font-semibold">{label}</span>
-            {disabled && <LockIcon />}
-        </button>
-        {disabled && (
-            <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 w-max px-2 py-1 bg-gray-600 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 shadow-lg">
-                Complete KYC to unlock
+const AuthPage = ({ children, title, setPage }) => {
+    return (
+        <div className="bg-gray-100 flex flex-1 flex-col justify-center py-12 sm:px-6 lg:px-8">
+            <div className="sm:mx-auto sm:w-full sm:max-w-md">
+                <a href="#" onClick={(e) => { e.preventDefault(); setPage('landing'); }} className="flex justify-center items-center gap-2 no-underline">
+                    <BuildingIcon className="h-12 w-auto text-indigo-600"/>
+                    <span className="text-3xl font-bold text-gray-800">Kayzera</span>
+                </a>
+                <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">{title}</h2>
             </div>
-        )}
+            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+                <div className="bg-white py-8 px-4 shadow-xl sm:rounded-lg sm:px-10">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const LoginPage = ({ setPage, setCurrentUser, users }) => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        const user = users[email];
+        if (user && user.password === password) {
+            setCurrentUser(user);
+            switch (user.type) {
+                case 'investor': setPage('investorDashboard'); break;
+                case 'developer': setPage('developerDashboard'); break;
+                case 'admin': setPage('adminDashboard'); break;
+                default: setPage('landing');
+            }
+        } else {
+            setError('Invalid email or password.');
+        }
+    };
+
+    const loginAs = (userEmail) => {
+        const user = users[userEmail];
+        setCurrentUser(user);
+        switch (user.type) {
+            case 'investor': setPage('investorDashboard'); break;
+            case 'developer': setPage('developerDashboard'); break;
+            case 'admin': setPage('adminDashboard'); break;
+            default: setPage('landing');
+        }
+    }
+    
+    return (
+        <AuthPage title="Sign in to your account" setPage={setPage}>
+            <form className="space-y-6" onSubmit={handleSubmit}>
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+                <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700">Email address</label>
+                    <div className="mt-1">
+                        <input id="email" name="email" type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    </div>
+                </div>
+                <div>
+                    <label htmlFor="password"className="block text-sm font-medium text-gray-700">Password</label>
+                    <div className="mt-1">
+                        <input id="password" name="password" type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    </div>
+                </div>
+                 <div className="flex items-center justify-between">
+                    <div className="text-sm">
+                        <a href="#" onClick={() => setPage('forgotPassword')} className="font-medium text-indigo-600 hover:text-indigo-500">Forgot your password?</a>
+                    </div>
+                </div>
+                <div>
+                    <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Sign in</button>
+                </div>
+            </form>
+             <div className="mt-6">
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-300" /></div>
+                    <div className="relative flex justify-center text-sm"><span className="px-2 bg-white text-gray-500">Or continue with a demo</span></div>
+                </div>
+                <div className="mt-6 grid grid-cols-1 gap-3">
+                    <button onClick={() => loginAs('investor@demo.com')} className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Login as Investor (Verified)</button>
+                    <button onClick={() => loginAs('buyer@demo.com')} className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Login as Investor (Unverified)</button>
+                    <button onClick={() => loginAs('developer@demo.com')} className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Login as Developer</button>
+                    <button onClick={() => loginAs('admin@demo.com')} className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">Login as Admin</button>
+                </div>
+            </div>
+            <div className="text-sm text-center mt-4">
+                <p className="text-gray-600">Don't have an account? <a href="#" onClick={() => setPage('register')} className="font-medium text-indigo-600 hover:text-indigo-500">Sign up</a></p>
+            </div>
+        </AuthPage>
+    );
+};
+
+const RegisterPage = ({ setPage }) => {
+    // Dummy registration form
+    return (
+        <AuthPage title="Create a new account" setPage={setPage}>
+             <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Full Name</label>
+                    <input type="text" required className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Email address</label>
+                    <input type="email" required className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" required className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+                </div>
+                 <div>
+                    <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">Create Account</button>
+                </div>
+            </form>
+             <div className="text-sm text-center mt-4">
+                <p className="text-gray-600">Already have an account? <a href="#" onClick={() => setPage('login')} className="font-medium text-indigo-600 hover:text-indigo-500">Sign in</a></p>
+            </div>
+        </AuthPage>
+    );
+}
+
+const ForgotPasswordPage = ({ setPage }) => {
+    return (
+        <AuthPage title="Reset your password" setPage={setPage}>
+            <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Email address</label>
+                    <input type="email" required className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
+                </div>
+                 <div>
+                    <button type="submit" className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">Send Reset Link</button>
+                </div>
+            </form>
+             <div className="text-sm text-center mt-4">
+                <p className="text-gray-600">Remembered your password? <a href="#" onClick={() => setPage('login')} className="font-medium text-indigo-600 hover:text-indigo-500">Sign in</a></p>
+            </div>
+        </AuthPage>
+    );
+};
+
+
+const ProjectCard = ({ project, setPage, onViewDetails }) => {
+    const progress = (project.amountRaised / project.fundingGoal) * 100;
+
+    const handleButtonClick = () => {
+        if (onViewDetails) {
+            onViewDetails(project);
+        } else if (setPage) {
+            setPage('login'); 
+        } else {
+            alert('View Project Details');
+        }
+    };
+
+    return (
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow duration-300 group">
+            <div className="relative">
+                <img className="h-56 w-full object-cover" src={project.imageUrl} alt={project.title} />
+                 <div className="absolute top-0 right-0 bg-indigo-600 text-white px-3 py-1 text-sm font-semibold rounded-bl-lg">
+                    {project.apy}% APY
+                </div>
+            </div>
+            <div className="p-6">
+                <p className="text-sm font-semibold text-indigo-600 uppercase tracking-wide">{project.location}</p>
+                <h3 className="mt-2 text-xl font-bold text-gray-900">{project.title} ({project.tokenTicker})</h3>
+                <p className="mt-2 text-gray-600 h-12 overflow-hidden">{project.description.substring(0, 80)}...</p>
+                
+                <div className="mt-4">
+                    <div className="flex justify-between text-sm text-gray-600">
+                        <span>Raised: {formatCurrency(project.amountRaised)}</span>
+                        <span>Goal: {formatCurrency(project.fundingGoal)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2.5 mt-1">
+                        <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
+                    </div>
+                </div>
+
+                <div className="mt-6 flex justify-between items-center text-sm text-gray-800">
+                    <div className="flex items-center">
+                        <ClockIcon className="w-5 h-5 mr-1 text-gray-500"/> {project.term} Months
+                    </div>
+                    <button onClick={handleButtonClick} className="font-semibold text-indigo-600 hover:text-indigo-800 transition-colors">
+                        View Details &rarr;
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- DASHBOARD COMPONENTS --- //
+const DashboardLayout = ({ children, sidebarItems, activeItem, setActiveItem, onLogout, currentUser }) => {
+    return (
+        <div className="bg-gray-100 flex-1 flex">
+            <div className="flex w-full">
+                {/* Sidebar */}
+                <aside className="w-64 bg-white shadow-md hidden md:flex flex-col">
+                    <div className="flex-grow">
+                        <div className="p-6">
+                             <div className="flex items-center gap-2">
+                                <BuildingIcon className="h-8 w-8 text-indigo-600" />
+                                <span className="text-xl font-bold text-gray-800">Kayzera</span>
+                            </div>
+                        </div>
+                        <nav className="mt-6">
+                            {sidebarItems.map(item => (
+                                <a 
+                                    key={item.name} 
+                                    href="#" 
+                                    onClick={() => setActiveItem(item.name)} 
+                                    className={`flex items-center py-3 px-6 text-gray-600 transition-colors duration-200 ${activeItem === item.name ? 'bg-indigo-50 text-indigo-600 border-r-4 border-indigo-500' : 'hover:bg-gray-50'}`}
+                                >
+                                    {item.icon}
+                                    <span className="mx-4 font-medium">{item.name}</span>
+                                </a>
+                            ))}
+                        </nav>
+                    </div>
+                </aside>
+
+                {/* Main Content */}
+                <main className="flex-1 flex flex-col h-screen">
+                     <div className="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10 border-b">
+                        <h1 className="text-2xl font-bold text-gray-800">{activeItem}</h1>
+                        <div className="flex items-center gap-4">
+                             <div className="hidden sm:flex items-center gap-4">
+                                <span className="text-gray-700 text-sm">Welcome, {currentUser.name.split(' ')[0]}</span>
+                                {currentUser.wallet && (
+                                     <div className="bg-green-100 text-green-800 text-sm font-bold px-3 py-1.5 rounded-full">
+                                        {formatCurrency(currentUser.wallet.usd)}
+                                    </div>
+                                )}
+                            </div>
+                            <button 
+                                onClick={onLogout} 
+                                className="p-2 rounded-full text-gray-500 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                title="Logout"
+                            >
+                                <LogOutIcon className="h-6 w-6" />
+                            </button>
+                        </div>
+                    </div>
+                    <div className="flex-1 p-6 md:p-8 overflow-y-auto">
+                        {children}
+                    </div>
+                </main>
+            </div>
+        </div>
+    );
+};
+
+const StatCard = ({ title, value, icon }) => (
+    <div className="bg-white p-6 rounded-lg shadow-md flex items-center">
+        <div className="bg-indigo-100 text-indigo-600 rounded-full p-3 mr-4">{icon}</div>
+        <div>
+            <p className="text-sm text-gray-500">{title}</p>
+            <p className="text-2xl font-bold text-gray-800">{value}</p>
+        </div>
     </div>
 );
 
-const NotificationPanel = ({ userNotifications, onMarkAsRead }) => {
+const FaqItem = ({ question, children }) => {
+    const [isOpen, setIsOpen] = useState(false);
     return (
-        <div className="absolute top-12 right-0 w-80 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-20">
-            <div className="p-4 border-b border-gray-700">
-                <h3 className="font-semibold text-white">Notifications</h3>
-            </div>
-            <div className="max-h-96 overflow-y-auto">
-                {userNotifications.length > 0 ? userNotifications.map(n => (
-                    <div key={n.id} className={`p-4 border-b border-gray-700/50 ${!n.read ? 'bg-blue-500/10' : ''}`}>
-                        <p className="text-sm text-gray-300">{n.text}</p>
-                        <p className="text-xs text-gray-500 mt-1">{formatRelativeTime(n.time)}</p>
-                    </div>
-                )) : (
-                    <p className="p-4 text-sm text-gray-400">No new notifications.</p>
-                )}
-            </div>
-            {userNotifications.some(n => !n.read) && (
-                <div className="p-2 text-center bg-gray-800 rounded-b-lg">
-                    <button onClick={onMarkAsRead} className="text-sm text-blue-400 hover:text-blue-300 font-semibold">Mark all as read</button>
+        <div className="border-b">
+            <button onClick={() => setIsOpen(!isOpen)} className="flex justify-between items-center w-full py-5 text-left">
+                <span className="font-semibold text-lg">{question}</span>
+                <ChevronDownIcon className={`w-6 h-6 transform transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isOpen && (
+                <div className="pb-5 pr-10 text-gray-600">
+                    {children}
                 </div>
             )}
         </div>
-    )
-}
+    );
+};
 
-const ImageGalleryModal = ({ images, onClose }) => {
-    const [currentIndex, setCurrentIndex] = useState(0);
+const HelpAndSupport = ({ currentUser }) => {
+    const [activeTab, setActiveTab] = useState('FAQ'); // 'FAQ' or 'Live Support'
+    const [messages, setMessages] = useState([
+        { id: 1, sender: 'support', text: "Welcome to live support! How can we help you today?" },
+    ]);
+    const [newMessage, setNewMessage] = useState('');
 
-    const goToPrevious = (e) => {
-        e.stopPropagation();
-        const isFirstSlide = currentIndex === 0;
-        const newIndex = isFirstSlide ? images.length - 1 : currentIndex - 1;
-        setCurrentIndex(newIndex);
+    const handleSendMessage = (e) => {
+        e.preventDefault();
+        if (newMessage.trim() === '') return;
+        
+        const userMessage = { id: Date.now(), sender: 'user', text: newMessage };
+        setMessages(prev => [...prev, userMessage]);
+        setNewMessage('');
+
+        // Mock reply from support
+        setTimeout(() => {
+             const supportReply = { id: Date.now() + 1, sender: 'support', text: "Thank you for your message. An agent will be with you shortly." };
+             setMessages(prev => [...prev, supportReply]);
+        }, 1500);
     };
 
-    const goToNext = (e) => {
-        e.stopPropagation();
-        const isLastSlide = currentIndex === images.length - 1;
-        const newIndex = isLastSlide ? 0 : currentIndex + 1;
-        setCurrentIndex(newIndex);
+    const renderFaqContent = () => {
+        if (currentUser.type === 'developer') {
+            return (
+                <>
+                    <FaqItem question="How do I submit a new project for funding?">
+                        <p>Navigate to the "Create New Project" tab in your dashboard. You'll be guided through a form to provide project details, financial projections, legal documents, and property images. Our team will review your submission within 5-7 business days.</p>
+                    </FaqItem>
+                    <FaqItem question="What are the platform fees for developers?">
+                        <p>We charge a one-time platform fee of 3% on the total capital raised for your project. This fee is deducted automatically when you withdraw the funds after a successful funding round. There are no upfront costs to list a project.</p>
+                    </FaqItem>
+                    <FaqItem question="When can I withdraw the raised capital?">
+                        <p>You can initiate a withdrawal of the raised funds as soon as your project's funding goal is met. The funds, minus the platform fee, will be securely transferred to your verified company treasury address from the "Manage Project" page.</p>
+                    </FaqItem>
+                     <FaqItem question="How is the APY for investors managed?">
+                        <p>Each project has a dedicated wallet for APY payments. As the developer, you are responsible for ensuring this wallet is sufficiently funded to cover the monthly APY distributions to your investors. You can deposit funds into this wallet from the "Manage Project" page.</p>
+                    </FaqItem>
+                </>
+            );
+        }
+        // Default to Investor FAQ
+        return (
+            <>
+                <FaqItem question="How do I invest in a project?">
+                    <p>Navigate to the "Marketplace" tab, select "Properties," and click on a project you're interested in. On the project details page, you can enter the amount you wish to invest and complete the transaction.</p>
+                </FaqItem>
+                 <FaqItem question="What is a Security Token?">
+                    <p>A Security Token represents your direct investment in a property. It is locked for the duration of the project term and entitles you to monthly APY (Annual Percentage Yield) payments, which you can claim from the "My Tokens" page.</p>
+                </FaqItem>
+                 <FaqItem question="What is a Market Token?">
+                    <p>A Market Token is paired with your Security Token and provides liquidity. You can list this token for sale on our "Secondary Market" at any time, allowing you to exit your position before the project's lockup period ends.</p>
+                </FaqItem>
+            </>
+        );
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex flex-col justify-center items-center z-50 p-4" onClick={onClose}>
-            <button onClick={onClose} className="absolute top-4 right-4 text-white text-5xl font-bold z-50">&times;</button>
-            <div className="relative w-full max-w-4xl max-h-[70vh] flex items-center justify-center" onClick={(e) => e.stopPropagation()}>
-                <button onClick={goToPrevious} className="absolute left-0 z-30 p-4 text-white bg-black bg-opacity-30 hover:bg-opacity-50 rounded-full m-2 transition">
-                    <ChevronLeftIcon />
-                </button>
-                <img src={images[currentIndex]} alt="Property View" className="max-h-full max-w-full object-contain rounded-lg shadow-2xl" />
-                <button onClick={goToNext} className="absolute right-0 z-30 p-4 text-white bg-black bg-opacity-30 hover:bg-opacity-50 rounded-full m-2 transition">
-                    <ChevronRightIcon />
-                </button>
+        <div className="max-w-4xl mx-auto">
+             <div className="mb-6 border-b border-gray-200">
+                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                    <button
+                        onClick={() => setActiveTab('FAQ')}
+                        className={`${activeTab === 'FAQ' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        FAQ
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('Live Support')}
+                        className={`${activeTab === 'Live Support' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        Live Support
+                    </button>
+                </nav>
             </div>
-            <div className="w-full max-w-4xl mt-4 flex justify-center items-center space-x-2 p-2 bg-black bg-opacity-20 rounded-lg overflow-x-auto">
-                {images.map((image, index) => (
-                    <img
-                        key={index}
-                        src={image}
-                        alt={`Thumbnail ${index + 1}`}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setCurrentIndex(index);
-                        }}
-                        className={`h-20 w-auto object-cover rounded-md cursor-pointer border-4 ${currentIndex === index ? 'border-blue-500' : 'border-transparent hover:border-gray-500'}`}
+
+            {activeTab === 'FAQ' && (
+                 <div className="bg-white p-8 rounded-lg shadow-md">
+                     <h2 className="text-2xl font-bold text-gray-800 mb-6">Frequently Asked Questions</h2>
+                     <div className="space-y-2">
+                        {renderFaqContent()}
+                     </div>
+                </div>
+            )}
+
+            {activeTab === 'Live Support' && (
+                <div className="bg-white rounded-lg shadow-md flex flex-col" style={{height: '600px'}}>
+                    <div className="p-4 border-b">
+                        <h2 className="text-xl font-bold text-gray-800">Live Support Chat</h2>
+                        <p className="text-sm text-green-500 flex items-center"><span className="h-2 w-2 bg-green-500 rounded-full mr-2"></span>Online</p>
+                    </div>
+                    <div className="flex-1 p-6 overflow-y-auto space-y-4">
+                        {messages.map(msg => (
+                             <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                 <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${msg.sender === 'user' ? 'bg-indigo-500 text-white' : 'bg-gray-200 text-gray-800'}`}>
+                                    {msg.text}
+                                 </div>
+                             </div>
+                        ))}
+                    </div>
+                    <div className="p-4 bg-gray-50 border-t">
+                        <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
+                             <button type="button" className="p-2 text-gray-500 hover:text-indigo-600 rounded-full hover:bg-gray-200">
+                                <PaperclipIcon className="w-5 h-5" />
+                            </button>
+                            <input
+                                type="text"
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)}
+                                placeholder="Type your message..."
+                                className="flex-1 block w-full border-gray-300 rounded-full py-2 px-4 focus:ring-indigo-500 focus:border-indigo-500"
+                            />
+                            <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-full font-semibold hover:bg-indigo-700">
+                                Send
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+        </div>
+    );
+};
+
+// --- INVESTOR DASHBOARD --- //
+const InvestorDashboard = ({ currentUser, projects, portfolios, marketListings, onLogout, onClaimApy, onListToken, onInvest }) => {
+    const [activeItem, setActiveItem] = useState('Dashboard');
+
+    const sidebarItems = [
+        { name: 'Dashboard', icon: <EyeIcon className="h-5 w-5" /> },
+        { name: 'My Tokens', icon: <BuildingIcon className="h-5 w-5" /> },
+        { name: 'Marketplace', icon: <TrendingUpIcon className="h-5 w-5" /> },
+        { name: 'My Wallet', icon: <WalletIcon className="h-5 w-5" /> },
+        { name: 'Settings', icon: <SettingsIcon className="h-5 w-5" /> },
+        { name: 'Help & Support', icon: <LifeBuoyIcon className="h-5 w-5" /> },
+    ];
+    
+    const renderContent = () => {
+        const isKycVerified = currentUser.kycStatus === 'Verified';
+
+        switch (activeItem) {
+            case 'Dashboard': return <InvestorDashboardOverview currentUser={currentUser} projects={projects} portfolios={portfolios} />;
+            case 'My Tokens': return <InvestorMyTokens currentUser={currentUser} projects={projects} portfolios={portfolios} onClaimApy={onClaimApy} onListToken={onListToken} />;
+            case 'Marketplace': return <InvestorMarketplace currentUser={currentUser} marketListings={marketListings} projects={projects} onInvest={onInvest} />;
+            case 'My Wallet': 
+                return isKycVerified 
+                    ? <InvestorWallet currentUser={currentUser} /> 
+                    : <KycRequired setActiveDashboardItem={setActiveItem} />;
+            case 'Settings': return <InvestorSettings currentUser={currentUser} />;
+            case 'Help & Support': return <HelpAndSupport currentUser={currentUser} />;
+            default: return <InvestorDashboardOverview currentUser={currentUser} projects={projects} portfolios={portfolios} />;
+        }
+    };
+
+    return (
+        <DashboardLayout currentUser={currentUser} sidebarItems={sidebarItems} activeItem={activeItem} setActiveItem={setActiveItem} onLogout={onLogout}>
+            {renderContent()}
+        </DashboardLayout>
+    );
+};
+
+const InvestorDashboardOverview = ({ currentUser, projects, portfolios }) => {
+    const userPortfolio = portfolios[currentUser.id] || { tokens: [] };
+
+    const stats = useMemo(() => {
+        const totalInvestment = userPortfolio.tokens
+            .filter(t => t.type === 'SECURITY')
+            .reduce((sum, token) => sum + token.amount, 0);
+
+        const portfolioValue = userPortfolio.tokens.reduce((sum, token) => sum + token.amount, 0);
+        
+        const lifetimeApy = totalInvestment * 0.15 * 1.2; // Mock calculation for lifetime earnings
+
+        const uniqueProjects = [...new Set(userPortfolio.tokens.map(t => t.projectId))].length;
+
+        return { totalInvestment, portfolioValue, lifetimeApy, uniqueProjects };
+    }, [userPortfolio.tokens]);
+    
+    const recentActivities = [
+        { id: 1, type: 'Investment', project: 'Eko Atlantic Tower', amount: -10000, date: '2025-09-01' },
+        { id: 2, type: 'APY Claim', project: 'Lekki Pearl Residence', amount: 62.50, date: '2025-08-05' },
+        { id: 3, type: 'Deposit', project: 'USD Wallet', amount: 25000, date: '2025-07-15' },
+    ];
+
+
+    return (
+         <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <StatCard title="Portfolio Value" value={formatCurrency(stats.portfolioValue)} icon={<WalletIcon className="w-6 h-6" />} />
+                <StatCard title="Total Investment" value={formatCurrency(stats.totalInvestment)} icon={<DollarSignIcon className="w-6 h-6" />} />
+                <StatCard title="Lifetime APY Earned" value={formatCurrency(stats.lifetimeApy)} icon={<TrendingUpIcon className="w-6 h-6" />} />
+                <StatCard title="Projects Invested" value={stats.uniqueProjects} icon={<BuildingIcon className="w-6 h-6" />} />
+            </div>
+            
+            <div className="bg-white p-6 rounded-lg shadow-md">
+                 <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Activity</h2>
+                 <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                        <tbody>
+                            {recentActivities.map(activity => (
+                                <tr key={activity.id} className="border-b last:border-0">
+                                    <td className="py-3 px-2">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activity.amount > 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                                            {activity.amount > 0 ? <ArrowDownLeftIcon className="w-5 h-5 text-green-600"/> : <ArrowUpRightIcon className="w-5 h-5 text-red-600"/>}
+                                        </div>
+                                    </td>
+                                    <td className="py-3 px-2">
+                                        <p className="font-semibold text-gray-800">{activity.type}</p>
+                                        <p className="text-sm text-gray-500">{activity.project}</p>
+                                    </td>
+                                    <td className="py-3 px-2 text-right">
+                                        <p className={`font-semibold ${activity.amount > 0 ? 'text-green-600' : 'text-gray-800'}`}>{formatCurrency(activity.amount)}</p>
+                                        <p className="text-sm text-gray-500">{new Date(activity.date).toLocaleDateString()}</p>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                 </div>
+            </div>
+        </div>
+    );
+};
+
+const InvestorMyTokens = ({ currentUser, projects, portfolios, onClaimApy, onListToken }) => {
+    const userPortfolio = portfolios[currentUser.id] || { tokens: [] };
+    const [listModalOpen, setListModalOpen] = useState(false);
+    const [tokenToList, setTokenToList] = useState(null);
+
+    const handleOpenListModal = (token) => {
+        setTokenToList(token);
+        setListModalOpen(true);
+    };
+
+    const handleCloseListModal = () => {
+        setTokenToList(null);
+        setListModalOpen(false);
+    };
+
+    const handleConfirmListing = (listingDetails) => {
+        onListToken(listingDetails);
+        handleCloseListModal();
+    };
+    
+    return (
+        <>
+            <div className="bg-white p-6 rounded-lg shadow-md">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">My Token Holdings</h2>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Token Type</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tokens Held</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value (USD)</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lockup / Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {userPortfolio.tokens.map(token => {
+                                 const project = projects.find(p => p.id === token.projectId);
+                                 if (!project) return null;
+
+                                 const isSecurityToken = token.type === 'SECURITY';
+                                 let endDate;
+                                 let canClaimApy = false;
+
+                                 if (isSecurityToken) {
+                                     const startDate = new Date(project.startDate);
+                                     endDate = new Date(new Date(startDate).setMonth(startDate.getMonth() + project.term));
+                                     
+                                     const lastClaimDate = new Date(token.lastApyClaimDate);
+                                     const now = new Date();
+                                     // Allow claim if the current month is after the last claimed month.
+                                     if (endDate > now && (now.getFullYear() > lastClaimDate.getFullYear() || now.getMonth() > lastClaimDate.getMonth())) {
+                                         canClaimApy = true;
+                                     }
+                                 }
+                                 
+                                 return (
+                                     <tr key={token.tokenId}>
+                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{project.title} ({project.tokenTicker})</td>
+                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isSecurityToken ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'}`}>
+                                                 {token.type}
+                                             </span>
+                                         </td>
+                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold">{token.amount.toLocaleString()}</td>
+                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold">{formatCurrency(token.amount)}</td>
+                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                             {isSecurityToken && endDate ? <LockupTimer endDate={endDate} /> : <span className="text-gray-500 capitalize">{token.status}</span>}
+                                         </td>
+                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                             {isSecurityToken ? (
+                                                <button 
+                                                    disabled={!canClaimApy} 
+                                                    onClick={() => onClaimApy(token.tokenId, currentUser.id)}
+                                                    className="bg-green-500 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                                >
+                                                    Claim APY
+                                                </button>
+                                             ) : (
+                                                <button 
+                                                    onClick={() => handleOpenListModal(token)}
+                                                    className="text-indigo-600 hover:text-indigo-900 text-xs font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
+                                                    disabled={token.status === 'listed'}
+                                                >
+                                                    {token.status === 'listed' ? 'Listed' : 'List for Sale'}
+                                                </button>
+                                             )}
+                                         </td>
+                                     </tr>
+                                 );
+                            })}
+                             {userPortfolio.tokens.length === 0 && (
+                                <tr><td colSpan="6" className="text-center py-8 text-gray-500">You do not own any tokens yet.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {listModalOpen && tokenToList && (
+                <ListTokenModal 
+                    isOpen={listModalOpen}
+                    onClose={handleCloseListModal}
+                    token={tokenToList}
+                    project={projects.find(p => p.id === tokenToList.projectId)}
+                    onConfirmList={handleConfirmListing}
+                    currentUser={currentUser}
+                />
+            )}
+        </>
+    );
+};
+
+const ListTokenModal = ({ isOpen, onClose, token, project, onConfirmList, currentUser }) => {
+    const [amount, setAmount] = useState('');
+    const [price, setPrice] = useState('');
+    const [error, setError] = useState('');
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        setError('');
+        if (!amount || !price || +amount <= 0 || +price <= 0) {
+            setError('Please enter a valid amount and price.');
+            return;
+        }
+        if (+amount > token.amount) {
+            setError(`You cannot list more than your token balance of ${token.amount}.`);
+            return;
+        }
+
+        const listingDetails = {
+            tokenId: token.tokenId,
+            sellerId: currentUser.id,
+            projectId: token.projectId,
+            amount: +amount,
+            price: +price,
+        };
+        onConfirmList(listingDetails);
+    };
+
+    if (!isOpen) return null;
+
+    return (
+         <WalletModal isOpen={isOpen} onClose={onClose} title={`List Token for ${project.title} (${project.tokenTicker})`}>
+            <form onSubmit={handleSubmit} className="space-y-4">
+                 <div>
+                    <p className="text-sm"><strong>Token Balance:</strong> {token.amount}</p>
+                 </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700">Amount to Sell</label>
+                    <input 
+                        type="number"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder="e.g., 1000"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
                     />
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700">Set Price (USD)</label>
+                    <input 
+                        type="number" 
+                        value={price}
+                        onChange={(e) => setPrice(e.target.value)}
+                        placeholder="e.g., 1100"
+                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                    />
+                     <p className="text-xs text-gray-500 mt-1">Total asking price for the amount you are selling.</p>
+                </div>
+                 {error && <p className="text-red-500 text-sm">{error}</p>}
+                <div className="text-xs text-gray-500">
+                    <p>A 1.5% transaction fee will be deducted upon sale.</p>
+                </div>
+                 <div className="flex justify-end space-x-2 pt-2">
+                    <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">Cancel</button>
+                    <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Confirm Listing</button>
+                </div>
+            </form>
+        </WalletModal>
+    );
+};
+
+
+const InvestorMarketplace = ({ currentUser, marketListings, projects, onInvest }) => {
+    const [activeTab, setActiveTab] = useState('Properties');
+    
+    const renderTabContent = () => {
+        switch(activeTab) {
+            case 'Secondary Market':
+                return <SecondaryMarket currentUser={currentUser} marketListings={marketListings} projects={projects} />;
+            case 'Properties':
+                return <PropertiesMarket projects={projects} currentUser={currentUser} onInvest={onInvest} />;
+            case 'Currency Exchange':
+                return <CurrencyExchange />;
+            default:
+                return null;
+        }
+    };
+
+    return (
+        <div>
+             <div className="mb-6 border-b border-gray-200">
+                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                    <button
+                        onClick={() => setActiveTab('Properties')}
+                        className={`${activeTab === 'Properties' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        Properties
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('Secondary Market')}
+                        className={`${activeTab === 'Secondary Market' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        Secondary Market
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('Currency Exchange')}
+                        className={`${activeTab === 'Currency Exchange' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        Currency Exchange
+                    </button>
+                </nav>
+            </div>
+            {renderTabContent()}
+        </div>
+    );
+};
+
+const InvestorWallet = ({ currentUser }) => {
+    const [activeTab, setActiveTab] = useState('Crypto');
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">My Wallet</h2>
+            <div className="mb-6 border-b border-gray-200">
+                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                    <button
+                        onClick={() => setActiveTab('Crypto')}
+                        className={`${activeTab === 'Crypto' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        Crypto Wallet
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('Fiat')}
+                        className={`${activeTab === 'Fiat' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        Fiat Wallet (NGN)
+                    </button>
+                </nav>
+            </div>
+            {activeTab === 'Crypto' ? <CryptoWallet wallet={currentUser.wallet} /> : <FiatWallet wallet={currentUser.wallet} />}
+        </div>
+    );
+};
+
+const KycRequired = ({ setActiveDashboardItem }) => {
+    return (
+        <div className="text-center bg-white p-8 rounded-lg shadow-md">
+            <ShieldCheckIcon className="mx-auto h-16 w-16 text-yellow-500" />
+            <h2 className="mt-4 text-2xl font-bold text-gray-800">Verification Required</h2>
+            <p className="mt-2 text-gray-600">Please complete your KYC verification to access your wallet and start investing.</p>
+            <button
+                onClick={() => setActiveDashboardItem('Settings')}
+                className="mt-6 inline-flex items-center justify-center px-5 py-2.5 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
+            >
+                Go to Verification
+            </button>
+        </div>
+    );
+};
+
+const InvestorSettings = ({ currentUser }) => {
+    const [activeTab, setActiveTab] = useState('KYC');
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Settings</h2>
+            <div className="mb-6 border-b border-gray-200">
+                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                    <button
+                        onClick={() => setActiveTab('KYC')}
+                        className={`${activeTab === 'KYC' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        KYC Verification
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('2FA')}
+                        className={`${activeTab === '2FA' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        Two-Factor Auth
+                    </button>
+                </nav>
+            </div>
+            {activeTab === 'KYC' ? <InvestorKycSettings status={currentUser.kycStatus} /> : <TwoFactorAuthSettings enabled={currentUser.twoFactorEnabled} />}
+        </div>
+    );
+};
+
+const InvestorKycSettings = ({ status }) => {
+    const [kycStatus, setKycStatus] = useState(status);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        // In a real app, this would involve file uploads and API calls.
+        setKycStatus('Pending');
+    };
+
+    if (kycStatus === 'Verified') {
+        return (
+            <div className="p-6 bg-green-50 rounded-lg border border-green-200 flex items-center">
+                <CheckCircleIcon className="w-8 h-8 text-green-500 mr-4"/>
+                <div>
+                    <h3 className="text-lg font-semibold text-green-800">KYC Verified</h3>
+                    <p className="text-green-700">Your account is fully verified. You have access to all platform features.</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (kycStatus === 'Pending') {
+        return (
+             <div className="p-6 bg-yellow-50 rounded-lg border border-yellow-200 flex items-center">
+                <ClockIcon className="w-8 h-8 text-yellow-500 mr-4"/>
+                <div>
+                    <h3 className="text-lg font-semibold text-yellow-800">KYC Pending Review</h3>
+                    <p className="text-yellow-700">Your documents have been submitted and are under review. This usually takes 24-48 hours.</p>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            <h3 className="text-lg font-bold text-gray-800 mb-2">Submit KYC Documents</h3>
+            <p className="text-sm text-gray-600 mb-6">To access wallet features and start investing, please complete your KYC verification.</p>
+            <form className="space-y-6" onSubmit={handleSubmit}>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Government-Issued ID</label>
+                    <p className="text-xs text-gray-500 mb-2"> (e.g., National ID Card, Passport, Driver's License)</p>
+                     <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                        <div className="space-y-1 text-center">
+                            <FileUpIcon className="mx-auto h-12 w-12 text-gray-400" />
+                            <div className="flex text-sm text-gray-600">
+                                <label htmlFor="id-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none">
+                                    <span>Upload a file</span>
+                                    <input id="id-upload" name="id-upload" type="file" className="sr-only"/>
+                                </label>
+                                <p className="pl-1">or drag and drop</p>
+                            </div>
+                            <p className="text-xs text-gray-500">PNG, JPG, PDF up to 10MB</p>
+                        </div>
+                    </div>
+                </div>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Proof of Address</label>
+                    <p className="text-xs text-gray-500 mb-2">(e.g., Utility Bill, Bank Statement)</p>
+                    <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                        <div className="space-y-1 text-center">
+                             <FileUpIcon className="mx-auto h-12 w-12 text-gray-400" />
+                            <div className="flex text-sm text-gray-600">
+                                <label htmlFor="address-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500">
+                                    <span>Upload a file</span>
+                                    <input id="address-upload" name="address-upload" type="file" className="sr-only"/>
+                                </label>
+                                <p className="pl-1">or drag and drop</p>
+                            </div>
+                            <p className="text-xs text-gray-500">PNG, JPG, PDF up to 10MB</p>
+                        </div>
+                    </div>
+                </div>
+                 <div className="flex justify-end pt-2">
+                    <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Submit for Verification</button>
+                </div>
+            </form>
+        </div>
+    );
+};
+
+const WalletModal = ({ isOpen, onClose, children, title }) => {
+    if (!isOpen) return null;
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md m-4">
+                <div className="p-4 border-b flex justify-between items-center">
+                    <h3 className="text-lg font-semibold">{title}</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                        <XIcon className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="p-6">
+                    {children}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const CryptoWallet = ({ wallet }) => {
+    const [modalConfig, setModalConfig] = useState({ isOpen: false, action: null, currency: null });
+
+    const openModal = (action, currency) => setModalConfig({ isOpen: true, action, currency });
+    const closeModal = () => setModalConfig({ isOpen: false, action: null, currency: null });
+
+    const cryptoAssets = [
+        { name: 'USDT', balance: wallet.usdt, logo: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=023' },
+        { name: 'USDC', balance: wallet.usdc, logo: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=023' }
+    ];
+
+    return (
+        <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {cryptoAssets.map(asset => (
+                    <div key={asset.name} className="p-4 border rounded-lg">
+                        <div className="flex items-center mb-4">
+                            <img src={asset.logo} alt={`${asset.name} logo`} className="w-8 h-8 mr-3"/>
+                            <h3 className="text-lg font-bold">{asset.name}</h3>
+                        </div>
+                        <p className="text-2xl font-semibold text-gray-800">{asset.balance.toFixed(2)}</p>
+                        <p className="text-sm text-gray-500">Balance</p>
+                        <div className="mt-4 flex space-x-2">
+                             <button onClick={() => openModal('Deposit', asset.name)} className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                                <ArrowDownLeftIcon className="w-4 h-4 mr-1"/> Deposit
+                            </button>
+                            <button onClick={() => openModal('Withdraw', asset.name)} className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                <ArrowUpRightIcon className="w-4 h-4 mr-1"/> Withdraw
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            <WalletModal isOpen={modalConfig.isOpen} onClose={closeModal} title={`${modalConfig.action} ${modalConfig.currency}`}>
+                {modalConfig.action === 'Deposit' && (
+                    <div>
+                        <p className="text-sm text-center text-gray-600 mb-4">Send {modalConfig.currency} to this address. Only send {modalConfig.currency} on the TRC20 network.</p>
+                        <div className="bg-gray-100 p-3 rounded-md text-center">
+                            <p className="text-xs text-gray-500 mb-1">Your {modalConfig.currency} Deposit Address</p>
+                            <p className="font-mono break-all">TAbcdeFGHIjklmnoPQRSTuvwxyz12345</p>
+                        </div>
+                        <button className="mt-4 w-full flex items-center justify-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded">
+                           <ClipboardIcon className="w-4 h-4 mr-2"/> Copy Address
+                        </button>
+                    </div>
+                )}
+                {modalConfig.action === 'Withdraw' && (
+                    <form className="space-y-4">
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">{modalConfig.currency} Address</label>
+                            <input type="text" placeholder="Enter recipient address" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Amount</label>
+                            <input type="number" placeholder="0.00" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                        </div>
+                        <p className="text-xs text-gray-500">Fee: 0.5 {modalConfig.currency}</p>
+                        <button type="submit" className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Confirm Withdraw</button>
+                    </form>
+                )}
+            </WalletModal>
+        </div>
+    );
+};
+
+const FiatWallet = ({ wallet }) => {
+    const [modalConfig, setModalConfig] = useState({ isOpen: false, action: null });
+    
+    const openModal = (action) => setModalConfig({ isOpen: true, action });
+    const closeModal = () => setModalConfig({ isOpen: false, action: null });
+
+    return (
+        <div>
+            <div className="p-4 border rounded-lg max-w-md mx-auto">
+                <h3 className="text-lg font-bold">NGN Wallet</h3>
+                <p className="text-3xl font-semibold text-gray-800 mt-2">{formatNgnCurrency(wallet.ngn)}</p>
+                <p className="text-sm text-gray-500">Available Balance</p>
+                <div className="mt-4 flex space-x-2">
+                    <button onClick={() => openModal('Deposit')} className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                        <ArrowDownLeftIcon className="w-4 h-4 mr-1"/> Deposit
+                    </button>
+                    <button onClick={() => openModal('Withdraw')} className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        <ArrowUpRightIcon className="w-4 h-4 mr-1"/> Withdraw
+                    </button>
+                </div>
+            </div>
+
+            <WalletModal isOpen={modalConfig.isOpen} onClose={closeModal} title={`${modalConfig.action} NGN`}>
+                {modalConfig.action === 'Deposit' && (
+                    <div className="text-sm text-gray-700 space-y-3">
+                        <p>To deposit NGN, please make a bank transfer to the following account:</p>
+                        <div className="bg-gray-100 p-3 rounded-md">
+                            <p><strong>Bank:</strong> Wema Bank</p>
+                            <p><strong>Account Number:</strong> 0123456789</p>
+                            <p><strong>Account Name:</strong> Kayzera Funding</p>
+                        </div>
+                        <p className="text-xs text-red-600"><strong>Important:</strong> Please use your email address as the transfer reference for faster processing.</p>
+                    </div>
+                )}
+                {modalConfig.action === 'Withdraw' && (
+                    <form className="space-y-4">
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Bank Name</label>
+                            <select className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3">
+                                <option>GTBank</option>
+                                <option>Zenith Bank</option>
+                                <option>Access Bank</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Account Number</label>
+                            <input type="text" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Amount (NGN)</label>
+                            <input type="number" placeholder="0.00" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                        </div>
+                        <button type="submit" className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Request Withdrawal</button>
+                    </form>
+                )}
+            </WalletModal>
+        </div>
+    );
+};
+
+
+const SecondaryMarket = ({ currentUser, marketListings, projects }) => {
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Secondary Market Listings</h2>
+             <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tokens For Sale</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price (USD)</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seller</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {marketListings.map(listing => {
+                            const project = projects.find(p => p.id === listing.projectId);
+                            // Mock finding seller name
+                             const sellerName = Object.values(initialUsers).find(u => u.id === listing.sellerId)?.name || 'Unknown';
+                             return (
+                                 <tr key={listing.listingId}>
+                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{project?.title} ({project?.tokenTicker})</td>
+                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{listing.amount.toLocaleString()}</td>
+                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">{formatCurrency(listing.price)}</td>
+                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sellerName}</td>
+                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                         <button disabled={currentUser.id === listing.sellerId} className="bg-green-500 text-white px-4 py-1.5 rounded-md text-xs font-medium hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                                             Buy Now
+                                         </button>
+                                     </td>
+                                 </tr>
+                             );
+                        })}
+                        {marketListings.length === 0 && (
+                            <tr><td colSpan="5" className="text-center py-8 text-gray-500">No tokens are currently listed on the market.</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+const PropertiesMarket = ({ projects, currentUser, onInvest }) => {
+    const [selectedProject, setSelectedProject] = useState(null);
+
+    const handleViewDetails = (project) => {
+        setSelectedProject(project);
+    };
+
+    const handleBack = () => {
+        setSelectedProject(null);
+    };
+
+    if (selectedProject) {
+        return <ProjectDetailsPage project={selectedProject} onBack={handleBack} currentUser={currentUser} onInvest={onInvest} />;
+    }
+    
+    const activeProjects = projects.filter(p => p.status === 'active' || p.status === 'funded');
+    return (
+        <div>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Available Properties for Investment</h2>
+            <div className="grid gap-8 lg:grid-cols-3 md:grid-cols-2 sm:grid-cols-1">
+                {activeProjects.map(project => (
+                    <ProjectCard key={project.id} project={project} onViewDetails={handleViewDetails} />
                 ))}
             </div>
         </div>
     );
 };
 
-
-const Marketplace = ({ projects, setProjects, currentUser }) => {
-    const [activeTab, setActiveTab] = useState('properties');
-    const [investModalOpen, setInvestModalOpen] = useState(false);
-    const [selectedProject, setSelectedProject] = useState(null);
+const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
+    const [mainImage, setMainImage] = useState(project.images[0]);
     const [investmentAmount, setInvestmentAmount] = useState('');
-    const [isGalleryOpen, setIsGalleryOpen] = useState(false);
-    const [galleryImages, setGalleryImages] = useState([]);
-    const [tradeModalOpen, setTradeModalOpen] = useState(false);
-    const [selectedToken, setSelectedToken] = useState(null);
-    const [tradeAmount, setTradeAmount] = useState('');
-    const [tradeAction, setTradeAction] = useState('buy'); // 'buy' or 'sell'
+    
+    const numericInvestmentAmount = parseFloat(investmentAmount) || 0;
+    const pricePerToken = project.fundingGoal > 0 && project.tokenSupply > 0 ? project.fundingGoal / project.tokenSupply : 1;
+    const tokensToReceive = numericInvestmentAmount > 0 ? numericInvestmentAmount / pricePerToken : 0;
+    const fee = numericInvestmentAmount * 0.015;
+    const totalDebit = numericInvestmentAmount + fee;
+    const progress = (project.amountRaised / project.fundingGoal) * 100;
 
-    const handleInvestClick = (project) => {
-        setSelectedProject(project);
-        setInvestModalOpen(true);
-    };
+    return (
+        <div>
+            <button onClick={onBack} className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-6">
+                <ArrowLeftIcon className="w-4 h-4 mr-2" />
+                Back to Properties
+            </button>
+            
+            <div className="bg-white rounded-lg shadow-xl overflow-hidden">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
+                    <div className="p-4 md:p-6">
+                        <img src={mainImage} alt="Main project view" className="w-full h-96 object-cover rounded-lg shadow-md"/>
+                        <div className="flex space-x-2 mt-4">
+                            {project.images.map((img, index) => (
+                                <img 
+                                    key={index}
+                                    src={img} 
+                                    alt={`Thumbnail ${index + 1}`}
+                                    className={`w-20 h-20 object-cover rounded-md cursor-pointer border-2 transition-all ${mainImage === img ? 'border-indigo-500' : 'border-transparent hover:border-gray-300'}`}
+                                    onClick={() => setMainImage(img)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+                    
+                    <div className="p-4 md:p-6 flex flex-col">
+                         <div className="flex-grow">
+                            <p className="text-sm font-semibold text-indigo-600 uppercase tracking-wide">{project.location}</p>
+                            <h1 className="mt-1 text-3xl font-bold text-gray-900">{project.title} ({project.tokenTicker})</h1>
+                            <p className="mt-4 text-gray-600 text-base">{project.description}</p>
+                            
+                            <div className="mt-6 grid grid-cols-2 gap-y-4 gap-x-2 text-sm text-gray-800 bg-gray-50 p-4 rounded-lg">
+                                <div className="flex items-center font-semibold"><TrendingUpIcon className="w-5 h-5 mr-2 text-indigo-500"/>APY:<span className="ml-auto font-bold text-lg text-green-600">{project.apy}%</span></div>
+                                <div className="flex items-center font-semibold"><ClockIcon className="w-5 h-5 mr-2 text-indigo-500"/>Term:<span className="ml-auto">{project.term} Months</span></div>
+                                <div className="flex items-center font-semibold"><UserIcon className="w-5 h-5 mr-2 text-indigo-500"/>Developer:<span className="ml-auto">{project.developerName}</span></div>
+                                <div className="flex items-center font-semibold"><CheckCircleIcon className="w-5 h-5 mr-2 text-indigo-500"/>Status:<span className="ml-auto capitalize">{project.status}</span></div>
+                            </div>
+                        </div>
 
-    const closeInvestModal = () => {
-        setInvestModalOpen(false);
-        setSelectedProject(null);
-        setInvestmentAmount('');
+                         <div className="mt-8">
+                             <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                                <div className="bg-green-500 h-2.5 rounded-full" style={{ width: `${progress}%` }}></div>
+                            </div>
+                             <div className="flex justify-between text-sm text-gray-600 mb-4">
+                                <span><strong>Raised:</strong> {formatCurrency(project.amountRaised)}</span>
+                                <span><strong>Goal:</strong> {formatCurrency(project.fundingGoal)}</span>
+                            </div>
+
+                             <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                                 <h3 className="font-bold text-lg text-gray-800">Invest in this Project</h3>
+                                 <div className="mt-4">
+                                    <input 
+                                        type="number"
+                                        placeholder="Enter amount (USD)" 
+                                        value={investmentAmount}
+                                        onChange={(e) => setInvestmentAmount(e.target.value)}
+                                        className="w-full border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"/>
+                                 </div>
+                                {investmentAmount > 0 && (
+                                    <div className="mt-4 text-sm space-y-2">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Tokens to Receive:</span>
+                                            <span className="font-bold text-indigo-600">{tokensToReceive.toLocaleString(undefined, { maximumFractionDigits: 2 })} {project.tokenTicker}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Investment Amount:</span>
+                                            <span className="font-medium text-gray-800">{formatCurrency(numericInvestmentAmount)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Platform Fee (1.5%):</span>
+                                            <span className="font-medium text-gray-800">{formatCurrency(fee)}</span>
+                                        </div>
+                                        <div className="flex justify-between border-t pt-2 mt-2">
+                                            <span className="font-bold text-gray-800">Total Debit:</span>
+                                            <span className="font-bold text-gray-900">{formatCurrency(totalDebit)}</span>
+                                        </div>
+                                    </div>
+                                )}
+                                 <div className="mt-4">
+                                     <button onClick={() => onInvest(project.id, parseFloat(investmentAmount))} className="w-full bg-indigo-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-indigo-700 transition-colors">
+                                        Invest Now
+                                     </button>
+                                 </div>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+const CurrencyExchange = () => {
+    const [ngnAmount, setNgnAmount] = useState('100000');
+    const [cryptoAmount, setCryptoAmount] = useState('125.00');
+    const [selectedCrypto, setSelectedCrypto] = useState('USDT');
+
+    const handleNgnChange = (e) => {
+        const value = e.target.value;
+        setNgnAmount(value);
+        // Dummy conversion rate
+        setCryptoAmount((value / 800).toFixed(2));
     };
     
-    const handleConfirmInvestment = (e) => {
-        e.preventDefault();
-        // In a real app, you'd integrate with a wallet and smart contract here
-        alert(`Successfully invested ${investmentAmount} USDT in ${selectedProject.name}`);
-        closeInvestModal();
-    }
+    return (
+         <div className="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Currency Exchange</h2>
+            <div className="space-y-6">
+                <div className="p-6 border rounded-lg">
+                    <div className="flex justify-between items-center mb-4">
+                        <label className="text-lg font-medium text-gray-700">You Pay (NGN)</label>
+                        <span className="text-sm text-gray-500">Balance: ₦ 5,000,000</span>
+                    </div>
+                    <input 
+                        type="number" 
+                        value={ngnAmount}
+                        onChange={handleNgnChange}
+                        className="w-full text-3xl font-bold border-0 p-0 focus:ring-0"
+                    />
+                </div>
+                <div className="flex justify-center my-4">
+                    <RepeatIcon className="w-8 h-8 text-gray-400"/>
+                </div>
+                <div className="p-6 border rounded-lg">
+                    <div className="flex justify-between items-center mb-4">
+                        <label className="text-lg font-medium text-gray-700">You Receive (Crypto)</label>
+                    </div>
+                     <div className="flex items-end">
+                        <input type="text" value={cryptoAmount} readOnly className="w-full text-3xl font-bold border-0 p-0 focus:ring-0 bg-transparent" />
+                        <select value={selectedCrypto} onChange={(e) => setSelectedCrypto(e.target.value)} className="text-xl font-semibold border-0 focus:ring-0">
+                            <option>USDT</option>
+                            <option>USDC</option>
+                        </select>
+                    </div>
+                </div>
+                <div className="text-sm text-gray-600 text-center">
+                    <p>Exchange Rate: 1 {selectedCrypto} ≈ 800 NGN</p>
+                    <p>Fee: 0.5%</p>
+                </div>
+                <button
+                    onClick={() => alert('Currency swap initiated!')}
+                    className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                >
+                    Swap
+                </button>
+            </div>
+        </div>
+    );
+};
 
-    const handleTradeClick = (project) => {
-        setSelectedToken(project);
-        setTradeModalOpen(true);
-        setTradeAmount('');
-        setTradeAction('buy');
+
+// --- DEVELOPER DASHBOARD --- //
+const DeveloperDashboard = ({ currentUser, projects, portfolios, marketListings, onLogout }) => {
+    const [activeItem, setActiveItem] = useState('Dashboard');
+    const [managingProjectId, setManagingProjectId] = useState(null);
+
+    const developerProjects = projects.filter(p => p.developerId === currentUser.id);
+
+    const sidebarItems = [
+        { name: 'Dashboard', icon: <EyeIcon className="h-5 w-5" /> },
+        { name: 'My Projects', icon: <BuildingIcon className="h-5 w-5" /> },
+        { name: 'Create New Project', icon: <CheckCircleIcon className="h-5 w-5" /> },
+        { name: 'Marketplace', icon: <TrendingUpIcon className="h-5 w-5" /> },
+        { name: 'Operational Wallet', icon: <WalletIcon className="h-5 w-5" /> },
+        { name: 'Settings', icon: <SettingsIcon className="h-5 w-5" /> },
+        { name: 'Help & Support', icon: <LifeBuoyIcon className="h-5 w-5" /> },
+    ];
+    
+     const renderContent = () => {
+        switch (activeItem) {
+            case 'Dashboard': return <DeveloperDashboardOverview currentUser={currentUser} projects={developerProjects} portfolios={portfolios} />;
+            case 'My Projects':
+                const projectToManage = projects.find(p => p.id === managingProjectId);
+                if (projectToManage) {
+                    return <DeveloperManageProject project={projectToManage} onBack={() => setManagingProjectId(null)} />;
+                }
+                return <DeveloperMyProjects projects={developerProjects} onManageProject={setManagingProjectId} />;
+            case 'Create New Project': return <DeveloperCreateProject />;
+            case 'Marketplace': return <InvestorMarketplace currentUser={currentUser} marketListings={marketListings} projects={projects} />;
+            case 'Operational Wallet': return <DeveloperWallet currentUser={currentUser} />;
+            case 'Settings': return <DeveloperSettings currentUser={currentUser} />;
+            case 'Help & Support': return <HelpAndSupport currentUser={currentUser} />;
+            default: return <DeveloperDashboardOverview currentUser={currentUser} projects={developerProjects} portfolios={portfolios} />;
+        }
     };
+    
+    // Reset management view when switching sidebar tabs
+    useEffect(() => {
+        setManagingProjectId(null);
+    }, [activeItem]);
 
-    const closeTradeModal = () => {
-        setTradeModalOpen(false);
-        setSelectedToken(null);
-        setTradeAmount('');
-    };
+    return (
+        <DashboardLayout currentUser={currentUser} sidebarItems={sidebarItems} activeItem={activeItem} setActiveItem={setActiveItem} onLogout={onLogout}>
+            {renderContent()}
+        </DashboardLayout>
+    );
+};
 
-    const handleImageClick = (projectImages) => {
-        setGalleryImages(projectImages);
-        setIsGalleryOpen(true);
-    };
+const DeveloperDashboardOverview = ({ currentUser, projects, portfolios }) => {
+    const stats = useMemo(() => {
+        const totalCapitalRaised = projects.reduce((sum, p) => sum + p.amountRaised, 0);
+        const activeProjects = projects.filter(p => p.status === 'active' || p.status === 'funded').length;
+        
+        // Estimate unique investors in the developer's projects
+        const projectIds = new Set(projects.map(p => p.id));
+        const investorIds = new Set();
+        Object.values(portfolios).forEach(portfolio => {
+            portfolio.tokens.forEach(token => {
+                if (projectIds.has(token.projectId)) {
+                    investorIds.add(token.originalOwnerId);
+                }
+            });
+        });
+        const totalInvestors = investorIds.size;
 
-    const closeGalleryModal = () => {
-        setIsGalleryOpen(false);
-        setGalleryImages([]);
+        const upcomingPayout = projects.reduce((sum, p) => {
+            if (p.status === 'active' || p.status === 'funded') {
+                return sum + (p.amountRaised * (p.apy / 100)) / 12;
+            }
+            return sum;
+        }, 0);
+
+        return { totalCapitalRaised, activeProjects, totalInvestors, upcomingPayout };
+    }, [projects, portfolios]);
+
+    return (
+        <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard title="Total Capital Raised" value={formatCurrency(stats.totalCapitalRaised)} icon={<DollarSignIcon className="w-6 h-6" />} />
+                <StatCard title="Active Projects" value={stats.activeProjects} icon={<ZapIcon className="w-6 h-6" />} />
+                <StatCard title="Total Investors" value={stats.totalInvestors} icon={<UserIcon className="w-6 h-6" />} />
+                <StatCard title="Next Month APY Payout" value={formatCurrency(stats.upcomingPayout)} icon={<TrendingUpIcon className="w-6 h-6" />} />
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-md">
+                <h3 className="text-xl font-bold text-gray-800 mb-4">Projects Summary</h3>
+                <div className="space-y-4">
+                    {projects.length > 0 ? projects.map(project => {
+                        const progress = project.fundingGoal > 0 ? (project.amountRaised / project.fundingGoal) * 100 : 0;
+                        return (
+                            <div key={project.id} className="border-b pb-4 last:border-b-0">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="font-semibold text-gray-800">{project.title}</span>
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                                         project.status === 'active' ? 'bg-green-100 text-green-800' :
+                                         project.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                         project.status === 'funded' ? 'bg-blue-100 text-blue-800' :
+                                         'bg-gray-100 text-gray-800'
+                                     }`}>{project.status.toUpperCase()}</span>
+                                </div>
+                                <div className="flex justify-between text-sm text-gray-500 mb-1">
+                                    <span>{formatCurrency(project.amountRaised)} / {formatCurrency(project.fundingGoal)}</span>
+                                    <span>{progress.toFixed(1)}%</span>
+                                </div>
+                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                    <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${progress}%` }}></div>
+                                </div>
+                            </div>
+                        )
+                    }) : <p className="text-gray-500">You have not created any projects yet.</p>}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+const DeveloperMyProjects = ({ projects, onManageProject }) => {
+    return (
+         <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">My Projects</h2>
+             <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Funding Goal</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Raised</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {projects.map(project => (
+                             <tr key={project.id}>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{project.title} ({project.tokenTicker})</td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatCurrency(project.fundingGoal)}</td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatCurrency(project.amountRaised)}</td>
+                                 <td className="px-6 py-4 whitespace-nowrap">
+                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                         project.status === 'active' ? 'bg-green-100 text-green-800' :
+                                         project.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                         project.status === 'funded' ? 'bg-blue-100 text-blue-800' :
+                                         'bg-gray-100 text-gray-800'
+                                     }`}>
+                                         {project.status}
+                                     </span>
+                                 </td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                     <button onClick={() => onManageProject(project.id)} className="text-indigo-600 hover:text-indigo-900">Manage</button>
+                                 </td>
+                             </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+const DeveloperManageProject = ({ project, onBack }) => {
+    const [modalOpen, setModalOpen] = useState(false);
+    const isFullyFunded = project.amountRaised >= project.fundingGoal;
+    const monthlyApyCost = (project.amountRaised * (project.apy / 100)) / 12;
+    const listingFee = project.amountRaised * 0.03;
+    const netWithdrawal = project.amountRaised - listingFee;
+
+    const handleWithdraw = () => {
+        alert(`Initiating withdrawal...\n\nTotal Raised: ${formatCurrency(project.amountRaised)}\nPlatform Fee (3%): -${formatCurrency(listingFee)}\n\nNet Payout to Treasury: ${formatCurrency(netWithdrawal)}`);
+        // In a real app, this would trigger a secure backend transaction.
     };
 
     return (
         <div>
-            <h2 className="text-4xl font-bold text-white mb-6">Marketplace</h2>
-            <div className="mb-6 border-b border-gray-700">
-                <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                    <button onClick={() => setActiveTab('properties')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'properties' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
-                        Properties
-                    </button>
-                    {currentUser.role === 'Developer' && (
-                        <button onClick={() => setActiveTab('my-tokens')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'my-tokens' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
-                            My Tokens
+             <button onClick={onBack} className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-6">
+                <ArrowLeftIcon className="w-4 h-4 mr-2" />
+                Back to Projects
+            </button>
+            
+            <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+                <h2 className="text-2xl font-bold text-gray-800">{project.title} ({project.tokenTicker})</h2>
+                <p className="text-gray-500">{project.location}</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <StatCard title="Total Raised" value={formatCurrency(project.amountRaised)} icon={<DollarSignIcon className="w-6 h-6" />} />
+                <StatCard title="Funding Goal" value={formatCurrency(project.fundingGoal)} icon={<CheckCircleIcon className="w-6 h-6" />} />
+                <StatCard title="Tokens Minted" value={`${project.amountRaised.toLocaleString()} / ${project.tokenSupply.toLocaleString()}`} icon={<BuildingIcon className="w-6 h-6" />} />
+                <StatCard title="APY Wallet Balance" value={formatCurrency(project.projectWalletBalance)} icon={<WalletIcon className="w-6 h-6" />} />
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-md">
+                 <h3 className="text-xl font-bold text-gray-800 mb-6">Project Actions</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* APY Management */}
+                    <div className="border p-6 rounded-lg">
+                        <h4 className="font-bold text-lg mb-2">APY Distribution</h4>
+                        <p className="text-sm text-gray-600 mb-4">Fund the project wallet to pay monthly returns to your investors.</p>
+                        <div className="text-sm mb-4">
+                            <p><strong>Est. Monthly APY Cost:</strong> {formatCurrency(monthlyApyCost)}</p>
+                            <p className="text-xs text-gray-500">Based on current amount raised.</p>
+                        </div>
+                        <div className="flex space-x-2">
+                             <button onClick={() => setModalOpen(true)} className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 text-sm font-medium">
+                                Deposit Funds
+                            </button>
+                            <button className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 text-sm font-medium">
+                                Pay Monthly APY
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Capital Management */}
+                    <div className="border p-6 rounded-lg">
+                        <h4 className="font-bold text-lg mb-2">Capital Management</h4>
+                        <p className="text-sm text-gray-600 mb-4">Once your project is fully funded, you can withdraw the raised capital to begin development.</p>
+                        <div className="text-sm mb-4 bg-gray-50 p-3 rounded-md border">
+                            <div className="flex justify-between"><span>Total Raised:</span> <strong>{formatCurrency(project.amountRaised)}</strong></div>
+                            <div className="flex justify-between text-red-600"><span>Platform Fee (3%):</span> <strong>-{formatCurrency(listingFee)}</strong></div>
+                            <div className="flex justify-between font-bold border-t pt-2 mt-2"><span>Net Payout:</span> <strong>{formatCurrency(netWithdrawal)}</strong></div>
+                        </div>
+                        <button 
+                            disabled={!isFullyFunded}
+                            onClick={handleWithdraw}
+                            className="w-full bg-blue-600 text-white px-4 py-3 rounded-md hover:bg-blue-700 text-sm font-medium disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        >
+                            {isFullyFunded ? `Withdraw Funds to Treasury` : 'Funding Goal Not Met'}
                         </button>
-                    )}
-                    <button onClick={() => setActiveTab('tokens')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'tokens' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
-                        All Tokens
+                         {isFullyFunded && <p className="text-xs text-center mt-2 text-green-600">Congratulations! Your project is fully funded.</p>}
+                    </div>
+                 </div>
+            </div>
+
+             <WalletModal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={`Deposit to ${project.title} (${project.tokenTicker}) Wallet`}>
+                 <form className="space-y-4">
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700">Amount (USD)</label>
+                        <input type="number" placeholder="e.g., 5000" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                    </div>
+                     <p className="text-xs text-gray-500">You will be prompted to confirm the transaction from your connected wallet.</p>
+                    <button type="submit" className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Proceed to Deposit</button>
+                </form>
+             </WalletModal>
+
+        </div>
+    );
+};
+
+const DeveloperWallet = ({ currentUser }) => {
+    const [activeTab, setActiveTab] = useState('Crypto');
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Operational Wallet</h2>
+            <p className="text-sm text-gray-600 mb-6">This is your main wallet for funding project APY payments and managing company funds.</p>
+            <div className="mb-6 border-b border-gray-200">
+                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                    <button
+                        onClick={() => setActiveTab('Crypto')}
+                        className={`${activeTab === 'Crypto' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        Crypto Wallet
                     </button>
-                    <button onClick={() => setActiveTab('exchange')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${activeTab === 'exchange' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
-                        Currency Exchange
+                    <button
+                        onClick={() => setActiveTab('Fiat')}
+                        className={`${activeTab === 'Fiat' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        Fiat Wallet (NGN)
                     </button>
                 </nav>
             </div>
-
-            {activeTab === 'properties' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                    {projects.filter(p => p.status === 'Funding').map(p => (
-                        <div key={p.id} className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 flex flex-col justify-between transition hover:border-blue-500/50 hover:bg-gray-800">
-                             <div>
-                                <img src={p.image} alt={p.name} className="w-full h-48 object-cover rounded-lg mb-4" />
-                                <h3 className="text-xl font-bold text-white">{p.name}</h3>
-                                <p className="text-sm text-gray-400 my-2 h-10">{p.description}</p>
-                                <div className="space-y-3 text-gray-300 mt-4">
-                                    <div className="flex justify-between"><span>APY</span> <span className="font-bold text-green-400">{p.apy}%</span></div>
-                                    <div className="flex justify-between"><span>Price/Token</span> <span className="font-bold">${(p.fundingGoal / p.tokenSupply).toFixed(2)}</span></div>
-                                    <p><strong>Funding:</strong> ${p.amountRaised.toLocaleString()} / ${p.fundingGoal.toLocaleString()}</p>
-                                    <div className="w-full bg-gray-600 rounded-full h-2.5">
-                                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${(p.amountRaised / p.fundingGoal) * 100}%` }}></div>
-                                    </div>
-                                </div>
-                            </div>
-                            <button 
-                                onClick={() => handleInvestClick(p)} 
-                                disabled={currentUser.role === 'Developer' && currentUser.id === p.developerId}
-                                className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:bg-gray-600 disabled:cursor-not-allowed">
-                                {currentUser.role === 'Developer' && currentUser.id === p.developerId ? 'Your Project' : 'Invest'}
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
-             {activeTab === 'my-tokens' && (
-                <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-hidden">
-                    <table className="w-full text-left">
-                        <thead className="bg-gray-800/60">
-                             <tr>
-                                <th className="p-5 text-base font-semibold text-gray-300 tracking-wider">Token</th>
-                                <th className="p-5 text-base font-semibold text-gray-300 tracking-wider">Project</th>
-                                <th className="p-5 text-base font-semibold text-gray-300 tracking-wider">Amount Owned (Tokens)</th>
-                                <th className="p-5 text-base font-semibold text-gray-300 tracking-wider">Value (USD)</th>
-                                <th className="p-5"></th>
-                            </tr>
-                        </thead>
-                         <tbody className="divide-y divide-gray-700/50">
-                            {projects.filter(p => p.investors[currentUser.id] && p.developerId !== currentUser.id).map(p => {
-                                const price = p.fundingGoal / p.tokenSupply;
-                                const userInvestment = p.investors[currentUser.id];
-                                const tokenAmount = userInvestment / price;
-                                return (
-                                <tr key={p.id} className="hover:bg-gray-700/40 transition">
-                                    <td className="p-5 text-lg text-white font-medium">{p.ticker}</td>
-                                    <td className="p-5 text-lg text-white">{p.name}</td>
-                                    <td className="p-5 text-lg text-white">{tokenAmount.toFixed(2)}</td>
-                                    <td className="p-5 text-lg text-white">${userInvestment.toLocaleString()}</td>
-                                    <td><button onClick={() => handleTradeClick(p)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition">Trade</button></td>
-                                </tr>
-                                )
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-             {activeTab === 'tokens' && (
-                <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-hidden">
-                    <table className="w-full text-left">
-                        <thead className="bg-gray-800/60">
-                             <tr>
-                                <th className="p-5 text-base font-semibold text-gray-300 tracking-wider">Token</th>
-                                <th className="p-5 text-base font-semibold text-gray-300 tracking-wider">Price (USD)</th>
-                                <th className="p-5 text-base font-semibold text-gray-300 tracking-wider">24h Change</th>
-                                <th className="p-5 text-base font-semibold text-gray-300 tracking-wider">Market Cap</th>
-                                <th className="p-5"></th>
-                            </tr>
-                        </thead>
-                         <tbody className="divide-y divide-gray-700/50">
-                            {projects.map(p => {
-                                const price = p.fundingGoal / p.tokenSupply;
-                                const change = (Math.random() * 10 - 5).toFixed(2); // Mock data
-                                return (
-                                <tr key={p.id} className="hover:bg-gray-700/40 transition">
-                                    <td className="p-5 text-lg text-white font-medium">{p.ticker}</td>
-                                    <td className="p-5 text-lg text-white">${price.toFixed(2)}</td>
-                                    <td className={`p-5 text-lg ${change >= 0 ? 'text-green-400' : 'text-red-400'}`}>{change}%</td>
-                                    <td className="p-5 text-lg text-white">${p.fundingGoal.toLocaleString()}</td>
-                                    <td><button onClick={() => handleTradeClick(p)} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition">Trade</button></td>
-                                </tr>
-                                )
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-             {activeTab === 'exchange' && (
-                <div className="max-w-md mx-auto bg-gray-800/50 p-8 rounded-xl border border-gray-700/50">
-                    <h3 className="text-2xl font-bold text-white text-center mb-6">Currency Exchange</h3>
-                    <form className="space-y-4">
-                        <div>
-                           <label className="block text-sm font-medium text-gray-400 mb-1">You Sell</label>
-                            <div className="relative">
-                                <input type="number" placeholder="0.00" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none pr-24"/>
-                                <select className="absolute inset-y-0 right-0 bg-gray-700 border border-gray-700 rounded-r-lg px-4 text-white">
-                                    <option>NGN</option>
-                                    <option>USDT</option>
-                                </select>
-                            </div>
-                        </div>
-                         <div>
-                           <label className="block text-sm font-medium text-gray-400 mb-1">You Get</label>
-                            <div className="relative">
-                                <input type="number" placeholder="0.00" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none pr-24"/>
-                                <select className="absolute inset-y-0 right-0 bg-gray-700 border border-gray-700 rounded-r-lg px-4 text-white">
-                                    <option>USDT</option>
-                                    <option>NGN</option>
-                                </select>
-                            </div>
-                        </div>
-                        <p className="text-sm text-center text-gray-400 pt-2">Rate: 1 USDT ≈ 1,450 NGN</p>
-                        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition">Exchange</button>
-                    </form>
-                </div>
-            )}
-            
-            {isGalleryOpen && (
-                <ImageGalleryModal
-                    images={galleryImages}
-                    onClose={closeGalleryModal}
-                />
-            )}
-
-            {tradeModalOpen && selectedToken && (
-                <Modal title={`Trade ${selectedToken.ticker}`} onClose={closeTradeModal} maxWidth="max-w-md">
-                    <div className="flex border-b border-gray-600 mb-6">
-                        <button onClick={() => setTradeAction('buy')} className={`flex-1 py-2 font-semibold text-center transition ${tradeAction === 'buy' ? 'text-green-400 border-b-2 border-green-400' : 'text-gray-400'}`}>Buy</button>
-                        <button onClick={() => setTradeAction('sell')} className={`flex-1 py-2 font-semibold text-center transition ${tradeAction === 'sell' ? 'text-red-400 border-b-2 border-red-400' : 'text-gray-400'}`}>Sell</button>
-                    </div>
-                    <form onSubmit={(e) => { e.preventDefault(); alert('Trade submitted!'); closeTradeModal(); }}>
-                        <div className="space-y-4">
-                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Amount ({selectedToken.ticker})</label>
-                                <input
-                                    type="number"
-                                    value={tradeAmount}
-                                    onChange={(e) => setTradeAmount(e.target.value)}
-                                    placeholder="0.00"
-                                    required
-                                    className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                />
-                            </div>
-                            {tradeAmount && (
-                                 <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-600/50 text-sm">
-                                     <div className="flex justify-between items-center text-gray-400">
-                                         <span>Subtotal</span>
-                                         <span className="font-mono text-white">${(tradeAmount * (selectedToken.fundingGoal / selectedToken.tokenSupply)).toFixed(2)}</span>
-                                     </div>
-                                     <div className="flex justify-between items-center text-gray-400 mt-2">
-                                         <span>Platform Fee (1.5%)</span>
-                                         <span className="font-mono text-white">${(tradeAmount * (selectedToken.fundingGoal / selectedToken.tokenSupply) * 0.015).toFixed(2)}</span>
-                                     </div>
-                                     <div className="border-t border-gray-600 my-2"></div>
-                                     <div className="flex justify-between items-center text-white font-bold text-base">
-                                         <span>Total {tradeAction === 'buy' ? 'Cost' : 'Proceeds'}</span>
-                                         <span className="font-mono">
-                                            ${tradeAction === 'buy'
-                                                ? (tradeAmount * (selectedToken.fundingGoal / selectedToken.tokenSupply) * 1.015).toFixed(2)
-                                                : (tradeAmount * (selectedToken.fundingGoal / selectedToken.tokenSupply) * 0.985).toFixed(2)
-                                            }
-                                         </span>
-                                     </div>
-                                 </div>
-                            )}
-                        </div>
-                         <button type="submit" className={`w-full font-bold py-3 px-4 rounded-lg transition mt-6 ${tradeAction === 'buy' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'} text-white`}>
-                            {tradeAction === 'buy' ? 'Buy' : 'Sell'} {selectedToken.ticker}
-                        </button>
-                    </form>
-                </Modal>
-            )}
-
-            {investModalOpen && selectedProject && (
-                <Modal title={selectedProject.name} onClose={closeInvestModal}>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[80vh] overflow-y-auto pr-2">
-                        {/* Left side: Image and details */}
-                        <div>
-                            <img 
-                                src={selectedProject.image} 
-                                alt={selectedProject.name} 
-                                className="w-full h-64 object-cover rounded-lg mb-4 cursor-pointer transition hover:opacity-90 shadow-lg"
-                                onClick={() => handleImageClick(selectedProject.images)}
-                             />
-                            <h3 className="text-2xl font-bold text-white mb-2">{selectedProject.name}</h3>
-                            <p className="text-gray-400">{selectedProject.description}</p>
-                        </div>
-
-                        {/* Right side: Metrics and investment form */}
-                        <div className="space-y-6">
-                            <div className="bg-gray-700/50 p-6 rounded-xl border border-gray-600/50">
-                                <h4 className="text-xl font-semibold text-white mb-4">Key Metrics</h4>
-                                <div className="space-y-3">
-                                    <div className="flex justify-between text-gray-300"><span>Target APY</span> <span className="font-bold text-green-400 text-lg">{selectedProject.apy}%</span></div>
-                                    <div className="flex justify-between text-gray-300"><span>Lock-up Term</span> <span className="font-bold text-white text-lg">{selectedProject.term} months</span></div>
-                                    <div className="flex justify-between text-gray-300"><span>Token Price</span> <span className="font-bold text-white text-lg">${(selectedProject.fundingGoal / selectedProject.tokenSupply).toFixed(2)}</span></div>
-                                    <div className="flex justify-between text-gray-300"><span>Funding Goal</span> <span className="font-bold text-white text-lg">${selectedProject.fundingGoal.toLocaleString()}</span></div>
-                                </div>
-                                 <div className="mt-4">
-                                    <div className="flex justify-between text-sm font-medium text-gray-300 mb-1">
-                                        <span>Funding Progress</span>
-                                        <span className="font-bold text-white">{((selectedProject.amountRaised / selectedProject.fundingGoal) * 100).toFixed(1)}%</span>
-                                    </div>
-                                    <div className="w-full bg-gray-600 rounded-full h-2.5">
-                                        <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${(selectedProject.amountRaised / selectedProject.fundingGoal) * 100}%` }}></div>
-                                    </div>
-                                    <div className="flex justify-between text-xs text-gray-400 mt-1">
-                                        <span>${selectedProject.amountRaised.toLocaleString()} Raised</span>
-                                        <span>${(selectedProject.fundingGoal - selectedProject.amountRaised).toLocaleString()} Left</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <form onSubmit={handleConfirmInvestment}>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label htmlFor="invest-amount" className="block text-sm font-medium text-gray-400 mb-1">Investment Amount (USDT)</label>
-                                        <input id="invest-amount" type="number" value={investmentAmount} onChange={(e) => setInvestmentAmount(e.target.value)} placeholder="0.00" required className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                                    </div>
-                                    <div className="text-sm text-gray-400 bg-gray-900/50 p-3 rounded-md">
-                                        <p>You will receive approx. <span className="font-semibold text-white">{(investmentAmount / (selectedProject.fundingGoal / selectedProject.tokenSupply) || 0).toFixed(2)} {selectedProject.ticker}</span> tokens.</p>
-                                    </div>
-                                </div>
-                                {investmentAmount && (
-                                <div className="mt-4 p-4 bg-gray-900/50 rounded-lg border border-gray-600/50 text-sm">
-                                    <div className="flex justify-between items-center text-gray-400">
-                                        <span>Investment</span>
-                                        <span className="font-mono text-white">${parseFloat(investmentAmount).toFixed(2)}</span>
-                                    </div>
-                                    <div className="flex justify-between items-center text-gray-400 mt-2">
-                                        <span>Platform Fee (1.5%)</span>
-                                        <span className="font-mono text-white">${(investmentAmount * 0.015).toFixed(2)}</span>
-                                    </div>
-                                    <div className="border-t border-gray-600 my-2"></div>
-                                    <div className="flex justify-between items-center text-white font-bold text-base">
-                                        <span>Total Payment</span>
-                                        <span className="font-mono">${(parseFloat(investmentAmount) * 1.015).toFixed(2)}</span>
-                                    </div>
-                                </div>
-                                )}
-                                <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition mt-6">Confirm Investment</button>
-                            </form>
-                        </div>
-                    </div>
-                </Modal>
-            )}
+            {activeTab === 'Crypto' ? <CryptoWallet wallet={currentUser.wallet} /> : <FiatWallet wallet={currentUser.wallet} />}
         </div>
     );
 };
 
-const TreasuryWalletPanel = ({ user, setUser }) => {
-    const [isEditing, setIsEditing] = useState(false);
-    const [address, setAddress] = useState(user.treasuryWallet);
-
-    const handleSave = () => {
-        setUser({ ...user, treasuryWallet: address });
-        setIsEditing(false);
-    };
-
+const DeveloperSettings = ({ currentUser }) => {
     return (
-        <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-            <h3 className="text-xl font-semibold mb-4 text-white">Treasury Payout Address</h3>
-            <p className="text-gray-400 mb-4 text-sm">This is the secure, verified address where funds from your completed projects will be sent. Changing it is a high-security action that normally requires contacting support.</p>
-            {isEditing ? (
-                <div className="space-y-4">
-                    <input
-                        type="text"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono"
-                    />
-                    <div className="flex space-x-2">
-                        <button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition">Save</button>
-                        <button onClick={() => setIsEditing(false)} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition">Cancel</button>
-                    </div>
-                </div>
-            ) : (
-                <div className="flex justify-between items-center">
-                    <p className="text-white font-mono break-all">{user.treasuryWallet || 'Not Set'}</p>
-                    <button onClick={() => setIsEditing(true)} className="ml-4 text-blue-400 hover:text-blue-300 font-semibold text-sm flex-shrink-0">Change</button>
-                </div>
-            )}
+        <div className="space-y-8">
+            <CompanyProfileSettings profile={currentUser.companyProfile} />
+            <TwoFactorAuthSettings enabled={currentUser.twoFactorEnabled} />
+            <TreasuryAddressSettings address={currentUser.treasuryAddress} />
         </div>
     );
 };
 
-
-// --- DASHBOARD COMPONENTS ---
-
-const AnalyticsDashboard = ({ developerProjects }) => {
-    const chartJsStatus = useScript('https://cdn.jsdelivr.net/npm/chart.js');
-    const dataLabelsPluginStatus = useScript(chartJsStatus === 'ready' ? 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js' : null);
-    const [activeAnalyticsTab, setActiveAnalyticsTab] = useState('capitalRaised');
-    const chartRefs = useRef({});
-
-    const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-
-    const [startDate, setStartDate] = useState({ year: currentYear, month: 'January' });
-    const [endDate, setEndDate] = useState({ year: currentYear, month: months[new Date().getMonth()] });
-
-    const handleDownloadReport = () => {
-        alert(`Simulating download of report from ${startDate.month} ${startDate.year} to ${endDate.month} ${endDate.year}.`);
-    }
-
-    useEffect(() => {
-        if (chartJsStatus !== 'ready' || dataLabelsPluginStatus !== 'ready' || !window.Chart || !window.ChartDataLabels) return;
-
-        window.Chart.register(window.ChartDataLabels);
-
-        Object.values(chartRefs.current).forEach(chart => chart?.destroy());
-
-        const chartOptions = {
-            maintainAspectRatio: false,
-            responsive: true,
-            scales: {
-                y: { beginAtZero: true, ticks: { color: '#9ca3af' }, grid: { color: '#374151' } },
-                x: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } }
-            },
-            plugins: { 
-                legend: { labels: { color: '#d1d5db' } },
-                datalabels: {
-                    display: false
-                }
-            }
-        };
-
-        const doughnutChartOptions = {
-             maintainAspectRatio: false,
-             responsive: true,
-             plugins: { 
-                legend: { position: 'top', labels: { color: '#d1d5db' } },
-                datalabels: {
-                     formatter: (value, ctx) => {
-                         const sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                         const percentage = ((value / sum) * 100).toFixed(1) + "%";
-                         return percentage;
-                     },
-                     color: '#fff',
-                     font: {
-                         weight: 'bold',
-                         size: 12,
-                     },
-                     display: 'auto',
-                     anchor: 'center',
-                     align: 'center',
-                }
-            }
-        };
-        
-        const pieChartOptions = {
-             maintainAspectRatio: false,
-             responsive: true,
-             plugins: { 
-                legend: { position: 'top', labels: { color: '#d1d5db' } },
-                datalabels: {
-                     formatter: (value, ctx) => {
-                         const sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                         const percentage = ((value / sum) * 100).toFixed(1) + "%";
-                         return percentage;
-                     },
-                     color: '#fff',
-                      font: {
-                         weight: 'bold',
-                         size: 12
-                     },
-                     anchor: 'end',
-                     align: 'start',
-                     offset: 8,
-                }
-            }
-        };
-
-        const renderChart = (id, type, data, options) => {
-            const ctx = document.getElementById(id)?.getContext('2d');
-            if (ctx) {
-                chartRefs.current[id] = new window.Chart(ctx, { type, data, options });
-            }
-        };
-
-        switch (activeAnalyticsTab) {
-            case 'capitalRaised':
-                renderChart('capitalRaisedChart', 'bar', {
-                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-                    datasets: [{ label: 'Capital Raised (USD)', data: [15000, 22000, 18000, 35000], backgroundColor: '#3B82F6' }]
-                }, chartOptions);
-                break;
-            case 'portfolioValue':
-                renderChart('portfolioValueChart', 'doughnut', {
-                    labels: developerProjects.map(p => p.name),
-                    datasets: [{
-                        label: 'Portfolio by Asset Value',
-                        data: developerProjects.map(p => p.fundingGoal),
-                        backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444']
-                    }]
-                }, doughnutChartOptions);
-                break;
-            case 'marketPerformance':
-                 renderChart('marketPerformanceChart', 'line', {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                    datasets: [{ label: 'Avg. Token Price (USD)', data: [1.02, 1.05, 1.03, 1.08, 1.12, 1.15], borderColor: '#10B981', tension: 0.1 }]
-                }, chartOptions);
-                break;
-            case 'fundingPerformance':
-                 renderChart('fundingPerformanceChart', 'bar', {
-                    labels: developerProjects.map(p => p.name),
-                    datasets: [
-                        { label: 'Amount Raised (USD)', data: developerProjects.map(p => p.amountRaised), backgroundColor: '#3B82F6' },
-                        { label: 'Funding Goal (USD)', data: developerProjects.map(p => p.fundingGoal), backgroundColor: '#4B5563' }
-                    ]
-                }, chartOptions);
-                break;
-            case 'newInvestors':
-                 renderChart('newInvestorsChart', 'bar', {
-                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-                    datasets: [{ label: 'New Investors', data: [12, 18, 15, 25], backgroundColor: '#F59E0B' }]
-                }, chartOptions);
-                break;
-            case 'investorDemographics':
-                 renderChart('investorDemographicsChart', 'pie', {
-                    labels: ['Lagos', 'Abuja', 'Diaspora (USA/UK)', 'Other'],
-                    datasets: [{
-                        label: 'Investor Demographics',
-                        data: [45, 25, 20, 10],
-                         backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444']
-                    }]
-                }, pieChartOptions);
-                break;
-            case 'investmentDistribution':
-                 renderChart('investmentDistributionChart', 'bar', {
-                    labels: ['<$1k', '$1k-$5k', '$5k-$10k', '$10k-$25k', '$25k+'],
-                    datasets: [{ label: 'Number of Investments', data: [45, 50, 30, 15, 8], backgroundColor: '#EF4444' }]
-                }, chartOptions);
-                break;
-        }
-
-        return () => {
-            Object.values(chartRefs.current).forEach(chart => chart?.destroy());
-        };
-    }, [activeAnalyticsTab, chartJsStatus, dataLabelsPluginStatus, developerProjects]);
-
-    const renderActiveChart = () => {
-        const charts = {
-            capitalRaised: { id: 'capitalRaisedChart', title: 'Total Capital Raised Weekly' },
-            portfolioValue: { id: 'portfolioValueChart', title: 'Portfolio by Asset Value' },
-            marketPerformance: { id: 'marketPerformanceChart', title: 'Secondary Market Performance' },
-            fundingPerformance: { id: 'fundingPerformanceChart', title: 'Funding Performance' },
-            newInvestors: { id: 'newInvestorsChart', title: 'Weekly New Investors' },
-            investorDemographics: { id: 'investorDemographicsChart', title: 'Investor Demographics' },
-            investmentDistribution: { id: 'investmentDistributionChart', title: 'Investment Size & Distribution' },
-        };
-        const activeChart = charts[activeAnalyticsTab];
-
-        return (
-            <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50 mt-4">
-                <h3 className="font-semibold text-white mb-4 text-xl">{activeChart.title}</h3>
-                <div className="h-96">
-                    <canvas id={activeChart.id}></canvas>
-                </div>
-            </div>
-        );
-    };
-
-    const AnalyticsTabButton = ({ tabId, children }) => (
-        <button
-            onClick={() => setActiveAnalyticsTab(tabId)}
-            className={`px-4 py-2 text-sm font-semibold rounded-md transition ${activeAnalyticsTab === tabId ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700/50'}`}
-        >
-            {children}
-        </button>
-    );
-
-    return (
-        <div>
-            <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6">
-                <h2 className="text-4xl font-bold text-white">Analytics Dashboard</h2>
-                <div className="flex items-center space-x-2 mt-4 sm:mt-0 bg-gray-800/50 p-2 rounded-lg border border-gray-700/50">
-                    <select value={startDate.month} onChange={e => setStartDate({...startDate, month: e.target.value})} className="bg-gray-700 rounded-md p-2 text-sm">
-                        {months.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                    <select value={startDate.year} onChange={e => setStartDate({...startDate, year: e.target.value})} className="bg-gray-700 rounded-md p-2 text-sm">
-                        {years.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                    <span className="text-gray-400 px-2">to</span>
-                     <select value={endDate.month} onChange={e => setEndDate({...endDate, month: e.target.value})} className="bg-gray-700 rounded-md p-2 text-sm">
-                        {months.map(m => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                    <select value={endDate.year} onChange={e => setEndDate({...endDate, year: e.target.value})} className="bg-gray-700 rounded-md p-2 text-sm">
-                        {years.map(y => <option key={y} value={y}>{y}</option>)}
-                    </select>
-                    <button onClick={handleDownloadReport} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-md transition flex items-center text-sm"><DownloadIcon/> Download</button>
-                </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2 p-3 bg-gray-800/50 rounded-lg border border-gray-700/50">
-                <AnalyticsTabButton tabId="capitalRaised">Capital Raised</AnalyticsTabButton>
-                <AnalyticsTabButton tabId="portfolioValue">Portfolio Value</AnalyticsTabButton>
-                <AnalyticsTabButton tabId="marketPerformance">Market Performance</AnalyticsTabButton>
-                <AnalyticsTabButton tabId="fundingPerformance">Funding Performance</AnalyticsTabButton>
-                <AnalyticsTabButton tabId="newInvestors">New Investors</AnalyticsTabButton>
-                <AnalyticsTabButton tabId="investorDemographics">Demographics</AnalyticsTabButton>
-                <AnalyticsTabButton tabId="investmentDistribution">Investment Distribution</AnalyticsTabButton>
-            </div>
-
-            {renderActiveChart()}
-        </div>
-    );
-};
-
-const AdminDashboard = ({ projects, setProjects }) => {
-    const [adminActiveTab, setAdminActiveTab] = useState('dashboard');
-    const [showCreateModal, setShowCreateModal] = useState(false);
-    const [newProject, setNewProject] = useState({ name: '', description: '', fundingGoal: '', apy: '', developerId: '' });
-    const [allUsers, setAllUsers] = useState(Object.values(users));
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState('All');
-    const [adminUser, setAdminUser] = useState(users.admin);
-    const [copied, setCopied] = useState(false);
-    
-    const platformTreasuryAddress = '0xPlatformTreasuryAddressGoesHere1234567890'; // Mock address
-
-    const chartJsStatus = useScript('https://cdn.jsdelivr.net/npm/chart.js');
-    const chartRefs = useRef({});
-
-    const copyToClipboard = (text) => {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        document.body.appendChild(textArea);
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-9999px';
-        textArea.select();
-        try {
-            document.execCommand('copy');
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
-            console.error('Failed to copy text: ', err);
-        }
-        document.body.removeChild(textArea);
-    };
-
-    const handleKycAction = (userId, isApproved) => {
-        setAllUsers(prevUsers =>
-            prevUsers.map(user =>
-                user.id === userId ? { ...user, kycVerified: isApproved } : user
-            )
-        );
-
-        // In a real app, you would also update the master user record
-        const userKey = Object.keys(users).find(key => users[key].id === userId);
-        if (userKey) {
-            users[userKey].kycVerified = isApproved;
-        }
-    };
-
-    useEffect(() => {
-        if (adminActiveTab !== 'dashboard' || chartJsStatus !== 'ready' || !window.Chart) return;
-
-        Object.values(chartRefs.current).forEach(chart => chart?.destroy());
-
-        const renderChart = (id, type, data, options) => {
-            const ctx = document.getElementById(id)?.getContext('2d');
-            if (ctx) {
-                chartRefs.current[id] = new window.Chart(ctx, { type, data, options });
-            }
-        };
-
-        const chartOptions = {
-            maintainAspectRatio: false,
-            responsive: true,
-            scales: {
-                y: { beginAtZero: true, ticks: { color: '#9ca3af' }, grid: { color: '#374151' } },
-                x: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } }
-            },
-            plugins: { legend: { labels: { color: '#d1d5db' } } }
-        };
-        
-        renderChart('fundsRaisedChart', 'line', {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            datasets: [{ label: 'Total Funds Raised (USD)', data: [50000, 75000, 120000, 110000, 180000, 250000], borderColor: '#3B82F6', tension: 0.1, fill: true, backgroundColor: 'rgba(59, 130, 246, 0.1)' }]
-        }, chartOptions);
-
-         renderChart('userRegistrationChart', 'bar', {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            datasets: [
-                { label: 'Investors', data: [10, 12, 15, 25, 30, 45], backgroundColor: '#10B981' },
-                { label: 'Developers', data: [1, 0, 2, 1, 3, 2], backgroundColor: '#F59E0B' }
-            ]
-        }, chartOptions);
-
-
-    }, [adminActiveTab, chartJsStatus]);
-
-    const resetCreateProjectModal = () => {
-        setNewProject({ name: '', description: '', fundingGoal: '', apy: '', developerId: '' });
-    }
+const CompanyProfileSettings = ({ profile }) => {
+    const [companyProfile, setCompanyProfile] = useState(profile);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setNewProject(prev => ({ ...prev, [name]: value }));
+        setCompanyProfile(prev => ({ ...prev, [name]: value }));
     };
-
-    const handleCreateProject = (e) => {
-        e.preventDefault();
-        setProjects(prev => [ ...prev, { id: prev.length + 1, ...newProject, amountRaised: 0, status: 'Funding', investors: {}, fundingGoal: parseFloat(newProject.fundingGoal), apy: parseFloat(newProject.apy) }]);
-        setShowCreateModal(false);
-        resetCreateProjectModal();
-    };
-    
-    const filteredProjects = projects.filter(project => {
-        const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                              users[project.developerId]?.name.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = statusFilter === 'All' || project.status === statusFilter;
-        return matchesSearch && matchesStatus;
-    });
-    
-    const renderAdminContent = () => {
-        switch(adminActiveTab) {
-            case 'dashboard':
-                const totalFundsRaised = projects.reduce((sum, p) => sum + p.amountRaised, 0);
-                const activeInvestors = new Set(projects.flatMap(p => Object.keys(p.investors))).size;
-                return (
-                    <div>
-                         <h2 className="text-4xl font-bold text-white mb-6">Admin Dashboard</h2>
-                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
-                            <StatCard title="Total Value Locked (TVL)" value={`$${totalFundsRaised.toLocaleString()}`} />
-                            <StatCard title="Total Funds Raised" value={`$${totalFundsRaised.toLocaleString()}`} />
-                            <StatCard title="Active Investors" value={activeInvestors} />
-                            <StatCard title="Active Developers" value={Object.values(users).filter(u=>u.role === 'Developer').length} />
-                        </div>
-                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                <h3 className="font-semibold text-white mb-4">Platform Growth (Funds Raised)</h3>
-                                <div className="h-80"><canvas id="fundsRaisedChart"></canvas></div>
-                            </div>
-                             <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                <h3 className="font-semibold text-white mb-4">User Registration Trends</h3>
-                                <div className="h-80"><canvas id="userRegistrationChart"></canvas></div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            case 'projects':
-                const projectStatuses = ['All', ...new Set(projects.map(p => p.status))];
-                return (
-                    <div>
-                        <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
-                            <h2 className="text-4xl font-bold text-white">Project Management</h2>
-                            <div className="flex items-center gap-4">
-                                <input 
-                                    type="text"
-                                    placeholder="Search projects..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                />
-                                <select 
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value)}
-                                    className="bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                                >
-                                    {projectStatuses.map(status => (
-                                        <option key={status} value={status}>{status}</option>
-                                    ))}
-                                </select>
-                                <button onClick={() => setShowCreateModal(true)} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg transition whitespace-nowrap">
-                                    Create Project
-                                </button>
-                            </div>
-                        </div>
-                         <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-x-auto">
-                             <table className="w-full text-left">
-                                <thead className="bg-gray-800/60">
-                                    <tr>
-                                        <th className="p-4 text-sm font-semibold text-gray-300">Project</th>
-                                        <th className="p-4 text-sm font-semibold text-gray-300">Developer</th>
-                                        <th className="p-4 text-sm font-semibold text-gray-300">Funding</th>
-                                        <th className="p-4 text-sm font-semibold text-gray-300">Status</th>
-                                        <th className="p-4 text-sm font-semibold text-gray-300">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-700/50">
-                                    {filteredProjects.map(p => (
-                                        <tr key={p.id} className="hover:bg-gray-700/40">
-                                            <td className="p-4 text-white font-medium">{p.name}</td>
-                                            <td className="p-4 text-gray-300">{users[p.developerId]?.name || 'N/A'}</td>
-                                            <td className="p-4 text-gray-300">${p.amountRaised.toLocaleString()} / ${p.fundingGoal.toLocaleString()}</td>
-                                            <td className="p-4"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${ p.status === 'Funding' ? 'bg-yellow-500/20 text-yellow-300' : p.status === 'Funded' ? 'bg-green-500/20 text-green-300' : 'bg-blue-500/20 text-blue-300' }`}>{p.status}</span></td>
-                                            <td className="p-4"><button className="text-blue-400 hover:text-blue-300 text-sm font-semibold">Manage</button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                );
-            case 'users':
-                 return (
-                    <div>
-                        <h2 className="text-4xl font-bold text-white mb-6">User Management</h2>
-                         <div className="bg-gray-800/50 rounded-xl border border-gray-700/50 overflow-x-auto">
-                             <table className="w-full text-left">
-                                <thead className="bg-gray-800/60">
-                                    <tr>
-                                        <th className="p-4 text-sm font-semibold text-gray-300">Name</th>
-                                        <th className="p-4 text-sm font-semibold text-gray-300">Role</th>
-                                        <th className="p-4 text-sm font-semibold text-gray-300">KYC Status</th>
-                                        <th className="p-4 text-sm font-semibold text-gray-300">Date Joined</th>
-                                        <th className="p-4 text-sm font-semibold text-gray-300">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-700/50">
-                                    {allUsers.filter(u=> u.id !== 'admin').map(u => (
-                                        <tr key={u.id} className="hover:bg-gray-700/40">
-                                            <td className="p-4 text-white font-medium">{u.name}</td>
-                                            <td className="p-4 text-gray-300">{u.role}</td>
-                                            <td className="p-4">{u.kycVerified ? <CheckCircleIcon /> : <XCircleIcon />}</td>
-                                            <td className="p-4 text-gray-300">{formatDate(u.dateJoined)}</td>
-                                            <td className="p-4"><button className="text-blue-400 hover:text-blue-300 text-sm font-semibold">View</button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                 );
-            case 'compliance':
-                const pendingKycs = allUsers.filter(u => !u.kycVerified && u.role !== 'Admin');
-                return (
-                    <div>
-                        <h2 className="text-4xl font-bold text-white mb-6">Compliance: Pending KYC</h2>
-                        <div className="space-y-4">
-                            {pendingKycs.length > 0 ? pendingKycs.map(u => (
-                                <div key={u.id} className="bg-gray-800/50 p-4 rounded-lg border border-gray-700/50 flex items-center justify-between">
-                                    <div>
-                                        <p className="font-semibold text-white">{u.name} ({u.role})</p>
-                                        <p className="text-sm text-gray-400">User ID: {u.id}</p>
-                                    </div>
-                                    <div className="flex space-x-2">
-                                        <button onClick={() => handleKycAction(u.id, true)} className="bg-green-600 hover:bg-green-700 text-white font-bold py-1 px-3 text-sm rounded-md transition">Approve</button>
-                                        <button onClick={() => alert(`KYC for ${u.name} will be marked as rejected.`)} className="bg-red-600 hover:bg-red-700 text-white font-bold py-1 px-3 text-sm rounded-md transition">Reject</button>
-                                    </div>
-                                </div>
-                            )) : <p className="text-gray-400">No pending KYC submissions.</p>}
-                        </div>
-                    </div>
-                );
-            case 'settings':
-                 return (
-                    <div>
-                        <h2 className="text-4xl font-bold text-white mb-6">Platform Settings</h2>
-                         <div className="space-y-6 max-w-2xl">
-                             <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                <label className="block text-xl font-semibold text-white mb-2">Platform Fee</label>
-                                <input type="number" defaultValue="3" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-white" />
-                                <p className="text-sm text-gray-400 mt-2">The percentage fee charged on successfully funded projects.</p>
-                             </div>
-                             <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                <h3 className="text-xl font-semibold mb-4 text-white">Platform Treasury Address</h3>
-                                <p className="text-gray-400 mb-4 text-sm">This is the central wallet where platform fees are collected.</p>
-                                <div className="flex justify-between items-center bg-gray-900 p-3 rounded-lg">
-                                    <p className="text-white font-mono break-all text-sm">{platformTreasuryAddress}</p>
-                                    <button onClick={() => copyToClipboard(platformTreasuryAddress)} className="ml-4 text-blue-400 hover:text-blue-300 font-semibold text-sm flex-shrink-0">
-                                        {copied ? 'Copied!' : 'Copy'}
-                                    </button>
-                                </div>
-                            </div>
-                            <TwoFactorAuthPanel user={adminUser} setUser={setAdminUser} />
-                        </div>
-                    </div>
-                 );
-        }
-    }
 
     return (
-        <div className="flex h-full">
-            {showCreateModal && (
-                <Modal title="Create New Project" onClose={() => {setShowCreateModal(false); resetCreateProjectModal()}}>
-                    <form onSubmit={handleCreateProject} className="space-y-4">
-                        <input name="name" value={newProject.name} onChange={handleInputChange} placeholder="Project Name" required className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white" />
-                        <textarea name="description" value={newProject.description} onChange={handleInputChange} placeholder="Description" required className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white h-24"></textarea>
-                        <input name="fundingGoal" type="number" value={newProject.fundingGoal} onChange={handleInputChange} placeholder="Funding Goal (USD)" required className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white" />
-                        <input name="apy" type="number" value={newProject.apy} onChange={handleInputChange} placeholder="APY (%)" required className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white" />
-                        <select name="developerId" value={newProject.developerId} onChange={handleInputChange} required className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white">
-                            <option value="">Select Developer</option>
-                            {Object.values(users).filter(u => u.role === 'Developer').map(d => (
-                                <option key={d.id} value={d.id}>{d.name}</option>
-                            ))}
-                        </select>
-                         <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition">Create Project</button>
-                    </form>
-                </Modal>
-            )}
-            <aside className="w-64 pr-8 border-r border-gray-700 flex-shrink-0">
-                <div className="py-8 lg:py-12">
-                    <nav className="space-y-2">
-                        <NavItem icon={<DashboardIcon />} label="Dashboard" tabName="dashboard" activeTab={adminActiveTab} setActiveTab={setAdminActiveTab} />
-                        <NavItem icon={<ProjectIcon />} label="Projects" tabName="projects" activeTab={adminActiveTab} setActiveTab={setAdminActiveTab} />
-                        <NavItem icon={<UsersIcon />} label="Users" tabName="users" activeTab={adminActiveTab} setActiveTab={setAdminActiveTab} />
-                        <NavItem icon={<ShieldExclamationIcon />} label="Compliance" tabName="compliance" activeTab={adminActiveTab} setActiveTab={setAdminActiveTab} />
-                        <NavItem icon={<SettingsIcon />} label="Settings" tabName="settings" activeTab={adminActiveTab} setActiveTab={setAdminActiveTab} />
-                    </nav>
+        <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Company Profile</h3>
+            <form className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Company Name</label>
+                        <input type="text" name="name" value={companyProfile.name} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Registration Number</label>
+                        <input type="text" name="regNumber" value={companyProfile.regNumber} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                    </div>
                 </div>
-            </aside>
-            <main className="flex-grow pl-8 overflow-y-auto">
-                <div className="py-8 lg:py-12">
-                    {renderAdminContent()}
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Company Address</label>
+                    <input type="text" name="address" value={companyProfile.address} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
                 </div>
-            </main>
+                 <div>
+                    <label className="block text-sm font-medium text-gray-700">Website</label>
+                    <input type="url" name="website" value={companyProfile.website} onChange={handleInputChange} className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                </div>
+                <div className="flex justify-end pt-2">
+                    <button type="submit" onClick={(e) => e.preventDefault()} className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Save Changes</button>
+                </div>
+            </form>
         </div>
     );
 };
 
+const TwoFactorAuthSettings = ({ enabled }) => {
+    const [isEnabled, setIsEnabled] = useState(enabled);
 
-// --- INTERACTIVE DEVELOPER DASHBOARD ---
-const DeveloperDashboard = ({ projects, setProjects, currentUser, onUserUpdate }) => {
-    const [activeTab, setActiveTab] = useState('dashboard');
-    const [managingProject, setManagingProject] = useState(null);
-    const [apyAmount, setApyAmount] = useState('');
-    const [userData, setUserData] = useState(currentUser);
-    const [helpSubTab, setHelpSubTab] = useState('faq');
-    const [selectedFile, setSelectedFile] = useState(null);
-    const fileInputRef = useRef(null);
-    const [newProjectData, setNewProjectData] = useState({
-        name: '',
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Two-Factor Authentication (2FA)</h3>
+            <div className="flex items-center justify-between">
+                <p className="text-gray-600">Protect your account with an extra layer of security.</p>
+                <button 
+                    onClick={() => setIsEnabled(!isEnabled)}
+                    className={`${isEnabled ? 'bg-indigo-600' : 'bg-gray-200'} relative inline-flex items-center h-6 rounded-full w-11 transition-colors duration-200 ease-in-out`}
+                >
+                    <span className={`${isEnabled ? 'translate-x-6' : 'translate-x-1'} inline-block w-4 h-4 transform bg-white rounded-full transition-transform duration-200 ease-in-out`}/>
+                </button>
+            </div>
+             {isEnabled && (
+                <div className="mt-4 p-4 bg-indigo-50 rounded-md border border-indigo-200">
+                    <p className="text-sm text-indigo-800">2FA is now enabled. You will be asked for a verification code on your next login.</p>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const TreasuryAddressSettings = ({ address }) => {
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-400">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Treasury Payout Address</h3>
+            <p className="text-sm text-gray-600 mb-4">This is the secure, verified address where funds from your completed projects will be sent. Changing it is a high-security action.</p>
+            <div className="bg-gray-100 p-3 rounded-md font-mono text-gray-700 break-all text-sm">
+                {address}
+            </div>
+            <div className="mt-4 flex items-start space-x-3">
+                <button className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 text-sm font-medium">
+                    Request Address Change
+                </button>
+                <p className="text-xs text-gray-500 flex-1">
+                    To change this address, you must contact support. This is to protect your funds from unauthorized access.
+                </p>
+            </div>
+        </div>
+    );
+};
+
+const DeveloperCreateProject = () => {
+    const [formData, setFormData] = useState({
+        projectTitle: '',
         location: '',
         description: '',
-        valuation: '',
+        fundingGoal: '',
         apy: '',
         term: '',
         tokenSupply: '',
-        ticker: ''
+        tokenTicker: '',
     });
     const [impliedPrice, setImpliedPrice] = useState(0);
 
-    const [walletTab, setWalletTab] = useState('crypto');
-    const [walletModal, setWalletModal] = useState({ isOpen: false, type: '', currency: '' });
-    const [mockNgnBalance, setMockNgnBalance] = useState(15000000);
-    const [mockUsdtBalance, setMockUsdtBalance] = useState(5800.75);
-    const [connectedWallet, setConnectedWallet] = useState(null);
-
-    const tokenAllocationChartRef = useRef(null);
-    const chartJsStatus = useScript('https://cdn.jsdelivr.net/npm/chart.js');
-    const dataLabelsPluginStatus = useScript(chartJsStatus === 'ready' ? 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js' : null);
-
-    const initialDevTransactions = [
-        { id: 1, type: 'Project Payout', amount: 1176000, currency: 'USDT', date: '2023-10-20', status: 'Completed', project: 'Eko Atlantic Tower' },
-        { id: 2, type: 'APY Deposit', amount: -9750, currency: 'USDT', date: '2023-10-18', status: 'Completed', project: 'Ikoyi Gardens' },
-        { id: 3, type: 'Withdrawal', amount: -5000000, currency: 'NGN', date: '2023-10-15', status: 'Completed' },
-    ];
-    const [transactions, setTransactions] = useState(initialDevTransactions);
-
-    const developerProjects = projects.filter(p => p.developerId === currentUser.id);
-    const developerInvestments = projects.filter(p => p.investors[currentUser.id] && p.developerId !== currentUser.id);
-    
-    const handleConnectWallet = () => {
-        setConnectedWallet({
-            address: '0x9876FedcBa9876FedcBa9876FedcBa9876FedcBa',
-            usdtBalance: 15000.50,
-            ngnBalance: 250000
-        });
-    };
-
-    const handleDisconnectWallet = () => {
-        setConnectedWallet(null);
-    }
-    
-    const handleFileSelect = (event) => {
-        if (event.target.files && event.target.files[0]) {
-            setSelectedFile(event.target.files[0]);
-        }
-    };
-
-    const handleAttachClick = () => {
-        fileInputRef.current.click();
-    };
-
-    const handleProjectInputChange = (e) => {
-        const { name, value } = e.target;
-        // Handle comma formatting for valuation and token supply
-        if (name === 'valuation' || name === 'tokenSupply') {
-            const sanitizedValue = value.replace(/,/g, '');
-            // Allow empty string or strings that are valid non-negative integers
-            if (sanitizedValue === '' || /^\d+$/.test(sanitizedValue)) {
-                 setNewProjectData(prev => ({ ...prev, [name]: sanitizedValue }));
-            }
-        } else {
-            setNewProjectData(prev => ({ ...prev, [name]: value }));
-        }
-    };
-
-    const handleWalletAction = (action, currency) => {
-        setWalletModal({ isOpen: true, type: action, currency });
-    };
-
-    const closeWalletModal = () => {
-        setWalletModal({ isOpen: false, type: '', currency: '' });
-    };
-
     useEffect(() => {
-        const valuation = parseFloat(newProjectData.valuation);
-        const supply = parseFloat(newProjectData.tokenSupply);
-        if (valuation > 0 && supply > 0) {
-            setImpliedPrice(valuation / supply);
+        const goal = parseFloat(String(formData.fundingGoal).replace(/,/g, ''));
+        const supply = parseFloat(String(formData.tokenSupply).replace(/,/g, ''));
+        if (goal > 0 && supply > 0) {
+            setImpliedPrice(goal / supply);
         } else {
             setImpliedPrice(0);
         }
-    }, [newProjectData.valuation, newProjectData.tokenSupply]);
+    }, [formData.fundingGoal, formData.tokenSupply]);
 
-    useEffect(() => {
-        if (activeTab !== 'dashboard' || chartJsStatus !== 'ready' || dataLabelsPluginStatus !== 'ready' || !window.Chart || !window.ChartDataLabels || developerInvestments.length === 0) return;
-
-        window.Chart.register(window.ChartDataLabels);
-
-        if (tokenAllocationChartRef.current) {
-             const existingChart = window.Chart.getChart(tokenAllocationChartRef.current);
-             if (existingChart) {
-                existingChart.destroy();
-             }
-        }
-
-        const allocationCtx = tokenAllocationChartRef.current.getContext('2d');
-        const allocationData = {
-            labels: developerInvestments.map(p => p.name),
-            datasets: [{
-                data: developerInvestments.map(p => p.investors[currentUser.id]),
-                backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
-                borderColor: '#1f2937', // bg-gray-800
-                borderWidth: 2,
-            }]
-        };
-        new window.Chart(allocationCtx, {
-            type: 'pie',
-            data: allocationData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: '#d1d5db',
-                            padding: 20
-                        }
-                    },
-                    datalabels: {
-                         formatter: (value, ctx) => {
-                             const sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                             const percentage = ((value / sum) * 100).toFixed(1) + "%";
-                             return percentage;
-                         },
-                         color: '#fff',
-                         font: {
-                             weight: 'bold',
-                             size: 12,
-                         },
-                    }
-                }
+    const handleInputChange = (e) => {
+        const { name, value } = e.target;
+        if (name === 'tokenTicker') {
+            setFormData(prev => ({ ...prev, [name]: value.toUpperCase().slice(0, 3) }));
+        } else if (name === 'fundingGoal' || name === 'tokenSupply') {
+            const numericString = value.replace(/[^0-9]/g, ''); // Remove all non-digits
+            if (numericString) {
+                const formattedValue = parseInt(numericString, 10).toLocaleString('en-US');
+                setFormData(prev => ({ ...prev, [name]: formattedValue }));
+            } else {
+                setFormData(prev => ({ ...prev, [name]: '' }));
             }
-        });
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
+    };
+    
+    const FileUploadComponent = ({ label, description }) => (
+        <div>
+            <label className="block text-sm font-medium text-gray-700">{label}</label>
+            <p className="text-xs text-gray-500 mb-2">{description}</p>
+            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md">
+                <div className="space-y-1 text-center">
+                    <FileUpIcon className="mx-auto h-12 w-12 text-gray-400" />
+                    <div className="flex text-sm text-gray-600">
+                        <label htmlFor="file-upload" className="relative cursor-pointer bg-white rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none">
+                            <span>Upload files</span>
+                            <input id="file-upload" name="file-upload" type="file" className="sr-only" multiple />
+                        </label>
+                        <p className="pl-1">or drag and drop</p>
+                    </div>
+                    <p className="text-xs text-gray-500">PNG, JPG, PDF up to 10MB</p>
+                </div>
+            </div>
+        </div>
+    );
 
-    }, [activeTab, chartJsStatus, dataLabelsPluginStatus, developerInvestments]);
+    return (
+        <div className="bg-white p-8 rounded-lg shadow-md">
+            <h2 className="text-2xl font-bold text-gray-800 mb-1">Submit New Project</h2>
+            <p className="text-sm text-gray-500 mb-8">Complete the form below to submit your project for review and funding.</p>
+             <form className="space-y-10">
+                {/* Section 1: Project Information */}
+                <fieldset className="border p-6 rounded-lg space-y-6">
+                    <legend className="text-lg font-semibold text-gray-800 px-2 -ml-2">Project Information</legend>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Project Title</label>
+                            <input type="text" name="projectTitle" value={formData.projectTitle} onChange={handleInputChange} placeholder="e.g., Victoria Island Luxury Apartments" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Location</label>
+                            <input type="text" name="location" value={formData.location} onChange={handleInputChange} placeholder="e.g., Victoria Island, Lagos" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                        </div>
+                    </div>
+                    <div>
+                         <label className="block text-sm font-medium text-gray-700">Description</label>
+                         <textarea name="description" value={formData.description} onChange={handleInputChange} rows="4" placeholder="e.g., A stunning collection of 2 and 3-bedroom apartments with waterfront views..." className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"></textarea>
+                    </div>
 
+                    <FileUploadComponent label="Property Pictures" description="Upload images that will be displayed on the properties tab after approval." />
+                </fieldset>
 
-    const handleProfileUpdate = (e) => {
-        setUserData({...userData, [e.target.name]: e.target.value});
+                {/* Section 2: Financials & Tokenomics */}
+                <fieldset className="border p-6 rounded-lg space-y-6">
+                    <legend className="text-lg font-semibold text-gray-800 px-2 -ml-2">Financials & Tokenomics</legend>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Funding Goal (USD)</label>
+                            <input type="text" name="fundingGoal" value={formData.fundingGoal} onChange={handleInputChange} placeholder="e.g., 500,000" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Project Annual APY (%)</label>
+                            <input type="number" name="apy" value={formData.apy} onChange={handleInputChange} step="0.1" placeholder="e.g., 17.5" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Term (Months)</label>
+                            <input type="number" name="term" value={formData.term} onChange={handleInputChange} placeholder="e.g., 36" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Total Token Supply</label>
+                            <input type="text" name="tokenSupply" value={formData.tokenSupply} onChange={handleInputChange} placeholder="e.g., 500,000" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Token Ticker</label>
+                            <input type="text" name="tokenTicker" value={formData.tokenTicker} onChange={handleInputChange} placeholder="e.g., VLA" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Implied Price Per Token</label>
+                             <div className="mt-1 block w-full bg-gray-100 border border-gray-300 rounded-md shadow-sm py-2 px-3">
+                                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(impliedPrice)}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FileUploadComponent label="Project Proposal Document" description="Upload your detailed project proposal."/>
+                        <FileUploadComponent label="Other Legal Documents" description="e.g., permits, land titles, etc."/>
+                    </div>
+                </fieldset>
+
+                 <div className="flex justify-end pt-4">
+                    <button type="button" className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md mr-3 hover:bg-gray-300">Cancel</button>
+                    <button type="submit" onClick={(e) => e.preventDefault()} className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Submit for Review</button>
+                </div>
+            </form>
+        </div>
+    );
+};
+
+// --- ADMIN DASHBOARD --- //
+
+const AdminDashboardOverview = ({ users, projects }) => {
+    const stats = useMemo(() => {
+        const totalUsers = Object.keys(users).length;
+        const investorCount = Object.values(users).filter(u => u.type === 'investor').length;
+        const developerCount = Object.values(users).filter(u => u.type === 'developer').length;
+
+        const totalProjects = projects.length;
+        const pendingProjects = projects.filter(p => p.status === 'pending').length;
+        const activeProjects = projects.filter(p => p.status === 'active').length;
+        const fundedProjects = projects.filter(p => p.status === 'funded').length;
+
+        const totalValueLocked = projects.reduce((sum, p) => sum + p.amountRaised, 0);
+
+        return {
+            totalUsers,
+            investorCount,
+            developerCount,
+            totalProjects,
+            pendingProjects,
+            activeProjects,
+            fundedProjects,
+            totalValueLocked,
+        };
+    }, [users, projects]);
+
+    return (
+        <div className="space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard title="Total Value Locked (TVL)" value={formatCurrency(stats.totalValueLocked)} icon={<DollarSignIcon className="w-6 h-6" />} />
+                <StatCard title="Total Users" value={stats.totalUsers} icon={<UserIcon className="w-6 h-6" />} />
+                <StatCard title="Total Projects" value={stats.totalProjects} icon={<BuildingIcon className="w-6 h-6" />} />
+                <StatCard title="Pending Projects" value={stats.pendingProjects} icon={<ClockIcon className="w-6 h-6" />} />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* User Breakdown */}
+                <div className="bg-white p-6 rounded-lg shadow-md">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">User Breakdown</h3>
+                     <div className="space-y-4">
+                        <div className="flex items-center">
+                            <span className="flex-1 text-gray-700">Investors</span>
+                            <span className="font-bold">{stats.investorCount}</span>
+                        </div>
+                        <div className="flex items-center">
+                            <span className="flex-1 text-gray-700">Developers</span>
+                            <span className="font-bold">{stats.developerCount}</span>
+                        </div>
+                    </div>
+                </div>
+                {/* Project Status */}
+                 <div className="bg-white p-6 rounded-lg shadow-md">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">Project Status</h3>
+                    <div className="space-y-4">
+                        <div className="flex items-center">
+                            <span className="h-3 w-3 rounded-full bg-yellow-400 mr-3"></span>
+                            <span className="flex-1 text-gray-700">Pending</span>
+                            <span className="font-bold">{stats.pendingProjects}</span>
+                        </div>
+                        <div className="flex items-center">
+                            <span className="h-3 w-3 rounded-full bg-green-500 mr-3"></span>
+                            <span className="flex-1 text-gray-700">Active</span>
+                            <span className="font-bold">{stats.activeProjects}</span>
+                        </div>
+                         <div className="flex items-center">
+                            <span className="h-3 w-3 rounded-full bg-blue-500 mr-3"></span>
+                            <span className="flex-1 text-gray-700">Funded</span>
+                            <span className="font-bold">{stats.fundedProjects}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const AdminCompliance = ({ users }) => {
+    const pendingKycUsers = useMemo(() => {
+        return Object.values(users).filter(user => user.kycStatus === 'Pending' || user.kycStatus === 'Not Submitted');
+    }, [users]);
+    
+    const handleApprove = (userId) => {
+        // In a real app, you'd call an API. Here we just log it.
+        console.log(`Approving KYC for user ID: ${userId}`);
+        alert(`KYC for user ${userId} approved.`);
+        // onUpdateKyc(userId, 'Verified'); // This would update the state
+    };
+    
+    const handleReject = (userId) => {
+        console.log(`Rejecting KYC for user ID: ${userId}`);
+        alert(`KYC for user ${userId} rejected.`);
+         // onUpdateKyc(userId, 'Rejected'); // This would update the state
     };
 
-    const handleProfileSave = (e) => {
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">KYC/AML Compliance Queue</h2>
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Name</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">KYC Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {pendingKycUsers.map(user => (
+                            <tr key={user.id}>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                         user.kycStatus === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                                     }`}>
+                                         {user.kycStatus}
+                                     </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                     <button onClick={() => alert('Viewing documents for ' + user.name)} className="text-indigo-600 hover:text-indigo-900 text-xs">View Docs</button>
+                                     <button onClick={() => handleApprove(user.id)} className="bg-green-500 text-white px-3 py-1.5 rounded-md text-xs hover:bg-green-600">Approve</button>
+                                     <button onClick={() => handleReject(user.id)} className="bg-red-500 text-white px-3 py-1.5 rounded-md text-xs hover:bg-red-600">Reject</button>
+                                </td>
+                            </tr>
+                        ))}
+                        {pendingKycUsers.length === 0 && (
+                            <tr><td colSpan="4" className="text-center py-8 text-gray-500">No users are pending KYC verification.</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+const PlatformTreasuryAddressSettings = () => {
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-400">
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Platform Treasury Address</h3>
+            <p className="text-sm text-gray-600 mb-4">This is the central address where all platform fees are collected. Changing this is a critical, high-security action.</p>
+            <div className="bg-gray-100 p-3 rounded-md font-mono text-gray-700 break-all text-sm">
+                0xPLATFORM_TREASURY_ADDRESS_1234567890ABCDEF
+            </div>
+            <div className="mt-4 flex items-start space-x-3">
+                <button className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 text-sm font-medium">
+                    Request Address Change
+                </button>
+                <p className="text-xs text-gray-500 flex-1">
+                    Changing the platform treasury address requires multi-signature approval and must be initiated through a secure internal process.
+                </p>
+            </div>
+        </div>
+    );
+};
+
+const AdminSettings = () => {
+    const [settings, setSettings] = useState({
+        platformFee: 3.0,
+        marketFee: 1.5,
+        investmentFee: 1.5,
+        newRegistrations: true,
+        withdrawalLock: false,
+    });
+
+    const handleInputChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setSettings(prev => ({
+            ...prev,
+            [name]: type === 'checkbox' ? checked : value
+        }));
+    };
+    
+    const handleSave = (e) => {
         e.preventDefault();
-        onUserUpdate(userData);
-        // Here you would typically show a success message
-        alert("Profile saved successfully!");
+        alert('Platform settings have been updated!');
+        console.log('Saving settings:', settings);
     };
 
-    const handleWithdraw = () => {
-        const developerAmount = managingProject.amountRaised * 0.97;
-        
-        setProjects(prev => prev.map(p => p.id === managingProject.id ? {...p, status: 'Paying APY'} : p));
-        setManagingProject(null);
-    };
+    return (
+        <div className="space-y-8 max-w-4xl mx-auto">
+            <div className="bg-white p-8 rounded-lg shadow-md">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">Platform Fee & Control Settings</h2>
+                <form className="space-y-6" onSubmit={handleSave}>
+                    {/* Fees Section */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div>
+                            <label htmlFor="platformFee" className="block text-sm font-medium text-gray-700">Developer Platform Fee (%)</label>
+                            <input
+                                type="number"
+                                name="platformFee"
+                                id="platformFee"
+                                value={settings.platformFee}
+                                onChange={handleInputChange}
+                                step="0.1"
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                            />
+                             <p className="mt-1 text-xs text-gray-500">Fee on capital raised by developers.</p>
+                        </div>
+                         <div>
+                            <label htmlFor="marketFee" className="block text-sm font-medium text-gray-700">Secondary Market Fee (%)</label>
+                            <input
+                                type="number"
+                                name="marketFee"
+                                id="marketFee"
+                                value={settings.marketFee}
+                                onChange={handleInputChange}
+                                step="0.1"
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                            />
+                             <p className="mt-1 text-xs text-gray-500">Fee on successful secondary market trades.</p>
+                        </div>
+                        <div>
+                            <label htmlFor="investmentFee" className="block text-sm font-medium text-gray-700">Investor Investment Fee (%)</label>
+                             <input
+                                type="number"
+                                name="investmentFee"
+                                id="investmentFee"
+                                value={settings.investmentFee}
+                                onChange={handleInputChange}
+                                step="0.1"
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                            />
+                             <p className="mt-1 text-xs text-gray-500">Fee on every new investment.</p>
+                        </div>
+                    </div>
+                    
+                    <hr/>
 
-    const handleDepositApy = (e) => {
-        e.preventDefault();
-        const amount = parseFloat(apyAmount);
-        if (!amount || amount <= 0) return;
+                    {/* Toggles Section */}
+                    <div className="space-y-4">
+                         <div className="flex items-center justify-between">
+                            <div>
+                                <h4 className="font-medium text-gray-800">Allow New User Registrations</h4>
+                                <p className="text-sm text-gray-500">Disable this to temporarily halt new sign-ups.</p>
+                            </div>
+                            <button 
+                                type="button"
+                                onClick={() => setSettings(p => ({...p, newRegistrations: !p.newRegistrations}))}
+                                className={`${settings.newRegistrations ? 'bg-indigo-600' : 'bg-gray-200'} relative inline-flex items-center h-6 rounded-full w-11 transition-colors`}
+                            >
+                                <span className={`${settings.newRegistrations ? 'translate-x-6' : 'translate-x-1'} inline-block w-4 h-4 transform bg-white rounded-full transition-transform`}/>
+                            </button>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h4 className="font-medium text-gray-800">Emergency Withdrawal Lock</h4>
+                                <p className="text-sm text-gray-500">Temporarily disable all fund withdrawals from the platform.</p>
+                            </div>
+                            <button 
+                                type="button"
+                                onClick={() => setSettings(p => ({...p, withdrawalLock: !p.withdrawalLock}))}
+                                className={`${settings.withdrawalLock ? 'bg-red-600' : 'bg-gray-200'} relative inline-flex items-center h-6 rounded-full w-11 transition-colors`}
+                            >
+                                <span className={`${settings.withdrawalLock ? 'translate-x-6' : 'translate-x-1'} inline-block w-4 h-4 transform bg-white rounded-full transition-transform`}/>
+                            </button>
+                        </div>
+                    </div>
 
-        setProjects(prev => prev.map(p => 
-            p.id === managingProject.id ? { ...p, apyFundsDeposited: p.apyFundsDeposited + amount, status: 'Paying APY', apyClaimedBy: {} } : p
-        ));
-        setManagingProject(null);
-        setApyAmount('');
-    };
+                    <div className="flex justify-end pt-4">
+                         <button type="submit" className="bg-indigo-600 text-white px-5 py-2 rounded-md font-semibold hover:bg-indigo-700">
+                            Save Settings
+                         </button>
+                    </div>
+                </form>
+            </div>
+            {/* Security Settings */}
+            <div className="bg-white p-8 rounded-lg shadow-md">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6">Security Settings</h2>
+                <div className="space-y-6">
+                    <TwoFactorAuthSettings enabled={true} />
+                    <PlatformTreasuryAddressSettings />
+                </div>
+            </div>
+        </div>
+    );
+};
 
-    const developerFaqs = [
-        { q: "What are the requirements for submitting a project?", a: "To submit a project, you must be a registered and KYC-verified developer. Your project proposal should include a detailed description, financial projections (total valuation, funding goal), expected APY, and legal documentation." },
-        { q: "What is the platform fee for developers?", a: "We charge a 3% fee on the total funds successfully raised for your project. This fee is automatically deducted when you withdraw the funds. A 1.5% transaction fee applies to secondary market trades, but APY deposits are exempt from this fee." },
-        { q: "How do I withdraw funds once my project is fully funded?", a: "Once your project's funding goal is met, the 'Withdraw Funds' button will become active in your 'My Projects' management panel. The funds (minus the platform fee) will be transferred to your registered treasury wallet." },
-        { q: "How do APY payments work?", a: "For funded projects, you are responsible for depositing the total monthly APY payment in USDT into the platform. You can do this from the 'Manage' section of your project. We then calculate and handle the distribution to each individual investor based on their stake." }
+const AdminDashboard = ({ currentUser, projects, users, onLogout }) => {
+     const [activeItem, setActiveItem] = useState('Dashboard');
+
+    const sidebarItems = [
+        { name: 'Dashboard', icon: <EyeIcon className="h-5 w-5" /> },
+        { name: 'Project Approvals', icon: <CheckCircleIcon className="h-5 w-5" /> },
+        { name: 'User Management', icon: <UserIcon className="h-5 w-5" /> },
+        { name: 'Compliance', icon: <ShieldCheckIcon className="h-5 w-5" /> },
+        { name: 'Settings', icon: <SettingsIcon className="h-5 w-5" /> },
     ];
-
-    const cryptoTransactions = transactions.filter(t => t.currency === 'USDT');
-    const fiatTransactions = transactions.filter(t => t.currency === 'NGN');
-
-    const renderContent = () => {
-        switch (activeTab) {
-            case 'dashboard':
-                return (
-                    <div>
-                        <div className="mb-6">
-                            <h2 className="text-4xl font-bold text-white">Developer Dashboard</h2>
-                             <p className="text-lg text-gray-400">Welcome back! Today is {formatDate(new Date())}.</p>
-                        </div>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {/* Column 1 */}
-                            <div className="lg:col-span-1 xl:col-span-1 space-y-6">
-                                <StatCard title="New Investors (Weekly)" value={12} />
-                                <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                    <h3 className="font-semibold text-white text-lg mb-4">My Project Pipeline</h3>
-                                    <ul className="space-y-4">
-                                         {[ { name: "Victoria Island Luxury Hub", status: "In Review" }, { name: "Banana Island Waterfront", status: "Submitted" },].map((p, i) => (
-                                            <li key={i}>
-                                                <p className="font-semibold text-gray-200">{p.name}</p>
-                                                <p className="text-sm text-blue-400">{p.status}</p>
-                                            </li>
-                                         ))}
-                                    </ul>
-                                </div>
-                            </div>
-                            {/* Column 2 */}
-                            <div className="lg:col-span-2 xl:col-span-2 space-y-6">
-                                 {/* Live funding projects card */}
-                                 <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                    <h3 className="font-semibold text-white text-lg mb-4">Live Funding Projects</h3>
-                                    <div className="space-y-4">
-                                      {developerProjects.filter(p => p.status === 'Funding').map(p => (
-                                        <div key={p.id}>
-                                           <div className="flex justify-between items-center text-sm mb-1">
-                                             <span className="font-semibold text-gray-200">{p.name}</span>
-                                             <span className="text-gray-400">{((p.amountRaised / p.fundingGoal) * 100).toFixed(0)}%</span>
-                                           </div>
-                                           <div className="w-full bg-gray-600 rounded-full h-2.5">
-                                               <div className="bg-blue-500 h-2.5 rounded-full" style={{ width: `${(p.amountRaised / p.fundingGoal) * 100}%` }}></div>
-                                           </div>
-                                           <div className="flex justify-between items-center text-xs text-gray-400 mt-1">
-                                                <span>Target: ${p.fundingGoal.toLocaleString()}</span>
-                                                <span className="font-semibold">Remaining: <span className="text-white">${(p.fundingGoal - p.amountRaised).toLocaleString()}</span></span>
-                                           </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                 </div>
-                                 
-                                {/* APY Payment Schedule Card */}
-                                 <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                    <h3 className="font-semibold text-white text-lg mb-4">APY Payment Schedule (Next 30 Days)</h3>
-                                    <ul className="space-y-3">
-                                        {developerProjects.filter(p => p.status === 'Paying APY' || p.status === 'Funded').map((p, i) => (
-                                            <li key={i} className="flex justify-between items-center text-sm">
-                                                <span className="text-gray-300">{p.name}</span>
-                                                <span className="text-gray-400">{new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleDateString()}</span>
-                                                <span className="font-semibold text-green-400">${((p.fundingGoal * (p.apy / 100)) / 12).toLocaleString(undefined, {minimumFractionDigits: 2})}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                             {/* Column 3 */}
-                            <div className="lg:col-span-3 xl:col-span-1 space-y-6">
-                                {developerInvestments.length > 0 && (
-                                    <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                        <h3 className="font-semibold text-white text-lg mb-4">My Token Investments</h3>
-                                        <div className="h-64 relative">
-                                            <canvas ref={tokenAllocationChartRef}></canvas>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                    <h3 className="font-semibold text-white text-lg mb-4">Financial Summary</h3>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between text-gray-300"><span>Total Portfolio Valuation</span><span className="font-bold text-white">${developerProjects.reduce((acc, p) => acc + p.fundingGoal, 0).toLocaleString()}</span></div>
-                                        <div className="flex justify-between text-gray-300"><span>Total Funds Raised</span><span className="font-bold text-green-400">${developerProjects.reduce((acc, p) => acc + p.amountRaised, 0).toLocaleString()}</span></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            case 'my-projects':
-                return (
-                    <div>
-                        <h2 className="text-4xl font-bold text-white mb-6">My Projects</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                            {developerProjects.map(p => (
-                                <div key={p.id} className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 flex flex-col justify-between transition hover:border-blue-500/50 hover:bg-gray-800">
-                                    <div>
-                                       <h3 className="text-xl font-bold text-white">{p.name}</h3>
-                                        <p className="text-sm text-gray-400 my-4 h-16">{p.description}</p>
-                                        <div className="space-y-3 text-gray-300">
-                                            <p><strong>Funding:</strong> ${p.amountRaised.toLocaleString()} / ${p.fundingGoal.toLocaleString()}</p>
-                                            <div className="w-full bg-gray-600 rounded-full h-2.5">
-                                                <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${(p.amountRaised / p.fundingGoal) * 100}%` }}></div>
-                                            </div>
-                                            <p><strong>Status:</strong> <span className="font-semibold text-blue-300">{p.status}</span></p>
-                                        </div>
-                                    </div>
-                                    <button onClick={() => setManagingProject(p)} className="mt-6 w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition">
-                                        Manage
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                );
-            case 'submit-project':
-                return (
-                    <div>
-                        <h2 className="text-4xl font-bold text-white mb-4">Submit New Project</h2>
-                        <p className="text-gray-400 mb-6 max-w-3xl">Fill out the form below to submit your project for review by the QuantuHome team. Upon approval, it will be listed for funding.</p>
-                        <form className="space-y-8 bg-gray-800/50 p-8 rounded-xl border border-gray-700/50 max-w-3xl">
-                           
-                            <div className="space-y-4">
-                                <h3 className="text-2xl font-semibold text-white border-b border-gray-700 pb-2">Project Information</h3>
-                                <div>
-                                    <label htmlFor="name" className="block text-sm font-medium text-gray-400 mb-1">Project Name</label>
-                                    <input id="name" name="name" value={newProjectData.name} onChange={handleProjectInputChange} placeholder="e.g., Lekki Pearl Residence" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                                </div>
-                                <div>
-                                    <label htmlFor="location" className="block text-sm font-medium text-gray-400 mb-1">Location</label>
-                                    <input id="location" name="location" value={newProjectData.location} onChange={handleProjectInputChange} placeholder="e.g., Lekki, Lagos" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                                </div>
-                                <div>
-                                     <label htmlFor="description" className="block text-sm font-medium text-gray-400 mb-1">Project Description</label>
-                                    <textarea id="description" name="description" value={newProjectData.description} onChange={handleProjectInputChange} placeholder="A detailed description of the property..." className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none h-32"></textarea>
-                                </div>
-                                 <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-2">Photo of the Property</label>
-                                    <p className="text-xs text-gray-500 mb-2">This will be the main display image in the marketplace.</p>
-                                    <input type="file" className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-300 hover:file:bg-blue-500/20"/>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <h3 className="text-2xl font-semibold text-white border-b border-gray-700 pb-2">Financials & Tokenomics</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label htmlFor="valuation" className="block text-sm font-medium text-gray-400 mb-1">Total Property Valuation (USD)</label>
-                                        <input id="valuation" name="valuation" type="text" placeholder="e.g., 500,000" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" onChange={handleProjectInputChange} value={newProjectData.valuation ? Number(newProjectData.valuation).toLocaleString('en-US') : ''} />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="apy" className="block text-sm font-medium text-gray-400 mb-1">Project Annual APY (%)</label>
-                                        <input id="apy" name="apy" type="number" placeholder="e.g., 12.5" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" onChange={handleProjectInputChange} value={newProjectData.apy} />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="term" className="block text-sm font-medium text-gray-400 mb-1">Investment Term (Months)</label>
-                                        <input id="term" name="term" type="number" placeholder="e.g., 24" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" onChange={handleProjectInputChange} value={newProjectData.term} />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="tokenSupply" className="block text-sm font-medium text-gray-400 mb-1">Total Token Supply</label>
-                                        <input id="tokenSupply" name="tokenSupply" type="text" placeholder="e.g., 500,000" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" onChange={handleProjectInputChange} value={newProjectData.tokenSupply ? Number(newProjectData.tokenSupply).toLocaleString('en-US') : ''} />
-                                    </div>
-                                     <div>
-                                        <label htmlFor="ticker" className="block text-sm font-medium text-gray-400 mb-1">Token Ticker (3 Letters)</label>
-                                        <input id="ticker" name="ticker" type="text" maxLength="3" placeholder="e.g., LPR" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" onChange={handleProjectInputChange} value={newProjectData.ticker} />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="impliedPrice" className="block text-sm font-medium text-gray-400 mb-1">Implied Price Per Token</label>
-                                        <input id="impliedPrice" name="impliedPrice" type="text" readOnly value={`$${impliedPrice.toFixed(2)}`} className="w-full bg-gray-700/50 border border-gray-600 rounded-lg p-3 text-gray-300 font-bold" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-400 mb-2">Project Proposal (.pdf)</label>
-                                    <p className="text-xs text-gray-500 mb-2">Upload your detailed project proposal, including blueprints, legal documents, etc.</p>
-                                    <input type="file" accept=".pdf" className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-300 hover:file:bg-blue-500/20"/>
-                                </div>
-                            </div>
-
-                            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition">Submit for Review</button>
-                        </form>
-                    </div>
-                );
-            case 'analytics':
-                 return <AnalyticsDashboard developerProjects={developerProjects} />;
-            case 'marketplace':
-                return <Marketplace projects={projects} setProjects={setProjects} currentUser={currentUser} />;
-            case 'wallet':
-                 return (
-                    <div>
-                        <h2 className="text-4xl font-bold text-white mb-6">Operational Wallet</h2>
-                        {!connectedWallet ? (
-                             <div className="text-center mt-20">
-                                <WalletIcon className="mx-auto h-16 w-16 text-gray-500" />
-                                <h3 className="mt-2 text-xl font-medium text-white">Connect your operational wallet</h3>
-                                <p className="mt-1 text-sm text-gray-400 max-w-lg mx-auto">This is a 'hot wallet' (like MetaMask) used for daily platform interactions such as depositing APY funds for your investors. It is separate from your secure Treasury Payout Address.</p>
-                                <div className="mt-6">
-                                    <button
-                                        onClick={handleConnectWallet}
-                                        type="button"
-                                        className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-blue-500"
-                                    >
-                                        Connect Wallet
-                                    </button>
-                                </div>
-                            </div>
-                        ) : (
-                             <div>
-                                <div className="mb-6 p-4 bg-gray-800/50 rounded-lg border border-gray-700/50 flex justify-between items-center">
-                                    <div>
-                                        <span className="text-sm text-gray-400">Connected Address</span>
-                                        <p className="font-mono text-white break-all">{connectedWallet.address}</p>
-                                    </div>
-                                    <button onClick={handleDisconnectWallet} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition">Disconnect</button>
-                                </div>
-                                <div className="mb-6 border-b border-gray-700">
-                                    <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                                        <button onClick={() => setWalletTab('crypto')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${walletTab === 'crypto' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
-                                            Crypto Wallet
-                                        </button>
-                                        <button onClick={() => setWalletTab('fiat')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${walletTab === 'fiat' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
-                                            Fiat Wallet (NGN)
-                                        </button>
-                                    </nav>
-                                </div>
-                                 {walletTab === 'crypto' && (
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                    <div className="lg:col-span-1 space-y-4">
-                                        <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                            <h4 className="text-gray-400 text-sm font-medium">USDT Balance</h4>
-                                            <p className="text-4xl font-bold text-white mt-1">{connectedWallet.usdtBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xl text-gray-400">USDT</span></p>
-                                        </div>
-                                        <button onClick={() => handleWalletAction('deposit', 'crypto')} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition">Deposit Crypto</button>
-                                        <button onClick={() => handleWalletAction('withdraw', 'crypto')} className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition">Withdraw Crypto</button>
-                                    </div>
-                                    <div className="lg:col-span-2 bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                        <h3 className="font-semibold text-white mb-4 text-lg">Transaction History</h3>
-                                        <div className="overflow-x-auto">
-                                        <table className="w-full text-left">
-                                            <thead className="border-b border-gray-700"><tr>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Type</th>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Amount</th>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Date</th>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Status</th>
-                                            </tr></thead>
-                                            <tbody className="divide-y divide-gray-700/50">
-                                                {cryptoTransactions.map(t => (
-                                                    <tr key={t.id}>
-                                                        <td className="py-4 px-2 text-lg text-white">{t.type} {t.project && `(${t.project})`}</td>
-                                                        <td className={`py-4 px-2 font-semibold text-lg ${t.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>{t.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                                        <td className="py-4 px-2 text-lg text-gray-400">{formatDate(t.date)}</td>
-                                                        <td className="py-4 px-2"><span className={`px-2 py-1 text-sm font-semibold rounded-full ${t.status === 'Completed' ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'}`}>{t.status}</span></td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                             {walletTab === 'fiat' && (
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                    <div className="lg:col-span-1 space-y-4">
-                                        <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                            <h4 className="text-gray-400 text-sm font-medium">NGN Balance</h4>
-                                            <p className="text-4xl font-bold text-white mt-1">₦{mockNgnBalance.toLocaleString()}</p>
-                                        </div>
-                                        <button onClick={() => handleWalletAction('deposit', 'fiat')} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition">Deposit Fiat</button>
-                                        <button onClick={() => handleWalletAction('withdraw', 'fiat')} className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition">Withdraw Fiat</button>
-                                    </div>
-                                    <div className="lg:col-span-2 bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                        <h3 className="font-semibold text-white mb-4 text-lg">Fiat Transaction History</h3>
-                                        <div className="overflow-x-auto">
-                                        <table className="w-full text-left">
-                                            <thead className="border-b border-gray-700"><tr>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Type</th>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Amount</th>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Date</th>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Status</th>
-                                            </tr></thead>
-                                            <tbody className="divide-y divide-gray-700/50">
-                                                {fiatTransactions.map(t => (
-                                                    <tr key={t.id}>
-                                                        <td className="py-4 px-2 text-lg text-white">{t.type}</td>
-                                                        <td className={`py-4 px-2 font-semibold text-lg ${t.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>{`₦${t.amount.toLocaleString()}`}</td>
-                                                        <td className="py-4 px-2 text-lg text-gray-400">{formatDate(t.date)}</td>
-                                                        <td className="py-4 px-2"><span className={`px-2 py-1 text-sm font-semibold rounded-full ${t.status === 'Completed' ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'}`}>{t.status}</span></td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                             </div>
-                        )}
-                    </div>
-                 );
-            case 'settings':
-                return (
-                    <div>
-                        <h2 className="text-4xl font-bold text-white mb-6">Developer Settings</h2>
-                        <div className="space-y-6 max-w-2xl">
-                            <form onSubmit={handleProfileSave} className="space-y-4 bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                <h3 className="text-xl font-semibold mb-4 text-white">Company Profile</h3>
-                                <input name="name" value={userData.name} onChange={handleProfileUpdate} placeholder="Company Name" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                                <textarea name="companyProfile" value={userData.companyProfile} onChange={handleProfileUpdate} placeholder="Company Profile" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none h-32"></textarea>
-                                <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition">Save Profile Changes</button>
-                            </form>
-                             <TreasuryWalletPanel user={userData} setUser={(updatedUser) => { setUserData(updatedUser); onUserUpdate(updatedUser); }} />
-                            <TwoFactorAuthPanel user={userData} setUser={(updatedUser) => { setUserData(updatedUser); onUserUpdate(updatedUser); }} />
-                        </div>
-                    </div>
-                );
-            case 'help':
-                return (
-                    <div>
-                        <h2 className="text-4xl font-bold text-white mb-6">Help & Support</h2>
-                        <div className="mb-6 border-b border-gray-700">
-                            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                                <button onClick={() => setHelpSubTab('faq')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${helpSubTab === 'faq' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
-                                    FAQ
-                                </button>
-                                <button onClick={() => setHelpSubTab('chat')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${helpSubTab === 'chat' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
-                                    Live Chat
-                                </button>
-                            </nav>
-                        </div>
-                        {helpSubTab === 'faq' && (
-                            <div className="max-w-4xl space-y-4">
-                                {developerFaqs.map((faq, index) => <FAQItem key={index} question={faq.q} answer={faq.a} />)}
-                            </div>
-                        )}
-                        {helpSubTab === 'chat' && (
-                             <div className="max-w-2xl mx-auto bg-gray-800/50 rounded-xl shadow-lg border border-gray-700/50">
-                                <div className="p-4 border-b border-gray-700">
-                                    <h3 className="text-xl font-bold text-white">Support Chat</h3>
-                                    <p className="text-sm text-gray-400 flex items-center"><span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>Support is online</p>
-                                </div>
-                                <div className="p-6 h-96 overflow-y-auto space-y-4">
-                                    {/* Chat messages */}
-                                    <div className="flex justify-start">
-                                        <div className="bg-gray-700 text-white p-3 rounded-lg max-w-xs">
-                                            <p>Hello! How can we assist you with your projects today?</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-4 bg-gray-900/50 border-t border-gray-700">
-                                    {selectedFile && (
-                                        <div className="text-sm text-gray-400 mb-2 px-4 flex justify-between items-center">
-                                            <span>Attached: {selectedFile.name}</span>
-                                            <button onClick={() => setSelectedFile(null)} className="text-red-400 hover:text-red-300">&times;</button>
-                                        </div>
-                                    )}
-                                    <form className="flex items-center space-x-4">
-                                        <input type="text" placeholder="Type your message..." className="flex-1 bg-gray-700 border border-gray-600 rounded-full px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                                        <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-                                        <button type="button" onClick={handleAttachClick} className="text-gray-400 hover:text-white">
-                                            <PaperclipIcon />
-                                        </button>
-                                        <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700">Send</button>
-                                    </form>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                );
-            default:
-                return null;
+    
+     const renderContent = () => {
+        switch (activeItem) {
+            case 'Dashboard': return <AdminDashboardOverview users={users} projects={projects} />;
+            case 'Project Approvals': return <AdminProjectApprovals projects={projects} />;
+            case 'User Management': return <AdminUserManagement users={users} />;
+            case 'Compliance': return <AdminCompliance users={users} />;
+            case 'Settings': return <AdminSettings />;
+            default: return <AdminDashboardOverview users={users} projects={projects} />;
         }
     };
     
     return (
-        <>
-            <div className="flex h-full">
-                 {walletModal.isOpen && <WalletActionModal walletModal={walletModal} closeWalletModal={closeWalletModal} setMockNgnBalance={setMockNgnBalance} setMockUsdtBalance={setMockUsdtBalance} setTransactions={setTransactions}/>}
-                <aside className="w-64 pr-8 border-r border-gray-700 flex-shrink-0">
-                    <div className="py-8 lg:py-12">
-                        <nav className="space-y-2">
-                            <NavItem icon={<DashboardIcon />} label="Dashboard" tabName="dashboard" activeTab={activeTab} setActiveTab={setActiveTab} />
-                            <NavItem icon={<ProjectIcon />} label="My Projects" tabName="my-projects" activeTab={activeTab} setActiveTab={setActiveTab} />
-                            <NavItem icon={<SubmitProjectIcon />} label="Submit Project" tabName="submit-project" activeTab={activeTab} setActiveTab={setActiveTab} />
-                            <NavItem icon={<AnalyticsIcon />} label="Analytics" tabName="analytics" activeTab={activeTab} setActiveTab={setActiveTab} />
-                            <NavItem icon={<MarketplaceIcon />} label="Marketplace" tabName="marketplace" activeTab={activeTab} setActiveTab={setActiveTab} />
-                            <NavItem icon={<WalletIcon />} label="Operational Wallet" tabName="wallet" activeTab={activeTab} setActiveTab={setActiveTab} />
-                            <NavItem icon={<SettingsIcon />} label="Settings" tabName="settings" activeTab={activeTab} setActiveTab={setActiveTab} />
-                            <NavItem icon={<HelpIcon />} label="Help & Support" tabName="help" activeTab={activeTab} setActiveTab={setActiveTab} />
-                        </nav>
-                    </div>
-                </aside>
-                <main className="flex-grow pl-8 overflow-y-auto">
-                    <div className="py-8 lg:py-12">
-                        {renderContent()}
-                    </div>
-                </main>
-            </div>
-
-            {managingProject && (
-                <Modal title={`Manage: ${managingProject.name}`} onClose={() => setManagingProject(null)}>
-                    <div className="space-y-6">
-                        <div className="bg-gray-700/50 p-4 rounded-lg">
-                            <h4 className="font-semibold text-white mb-2">Withdraw Funds</h4>
-                            <p className="text-sm text-gray-400 mb-4">Once a project is fully funded, you can withdraw the raised capital. Funds will be sent to your registered Treasury Payout Address.</p>
-                            <button onClick={handleWithdraw} disabled={managingProject.status !== 'Funded'} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:bg-gray-500 disabled:cursor-not-allowed">
-                                {managingProject.status === 'Funded' ? `Withdraw $${(managingProject.amountRaised * 0.97).toLocaleString()}` : 'Project not fully funded'}
-                            </button>
-                             <p className="text-xs text-center text-gray-400 mt-2">A 3% platform fee will be deducted. </p>
-                        </div>
-                        <div className="bg-gray-700/50 p-4 rounded-lg">
-                            <h4 className="font-semibold text-white mb-2">Deposit Monthly APY</h4>
-                            <p className="text-sm text-gray-400 mb-4">Deposit the total monthly APY payment in USDT from your connected Operational Wallet for investors to claim.</p>
-                             <form onSubmit={handleDepositApy}>
-                                <input type="number" value={apyAmount} onChange={(e) => setApyAmount(e.target.value)} placeholder="Enter total monthly APY in USDT" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none"/>
-                                <button type="submit" disabled={!connectedWallet || (managingProject.status !== 'Paying APY' && managingProject.status !== 'Funded')} className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:bg-gray-500 disabled:cursor-not-allowed">
-                                    {!connectedWallet ? 'Connect Operational Wallet First' : 'Deposit APY Payment'}
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </Modal>
-            )}
-        </>
+         <DashboardLayout currentUser={currentUser} sidebarItems={sidebarItems} activeItem={activeItem} setActiveItem={setActiveItem} onLogout={onLogout}>
+            {renderContent()}
+        </DashboardLayout>
     );
 };
 
-const WalletActionModal = ({ walletModal, closeWalletModal, setMockNgnBalance, setMockUsdtBalance, setTransactions }) => {
-    const [amount, setAmount] = useState('');
-    const [address, setAddress] = useState('');
-    const [copied, setCopied] = useState(false);
+const AdminProjectApprovals = ({ projects }) => {
+    const pendingProjects = projects.filter(p => p.status === 'pending');
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Pending Project Approvals</h2>
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Developer</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Funding Goal</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                         {pendingProjects.map(project => (
+                             <tr key={project.id}>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{project.title} ({project.tokenTicker})</td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{project.developerName}</td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatCurrency(project.fundingGoal)}</td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                     <button className="bg-green-500 text-white px-3 py-1.5 rounded-md text-xs hover:bg-green-600">Approve</button>
+                                     <button className="bg-red-500 text-white px-3 py-1.5 rounded-md text-xs hover:bg-red-600">Reject</button>
+                                 </td>
+                             </tr>
+                        ))}
+                        {pendingProjects.length === 0 && (
+                             <tr><td colSpan="4" className="text-center py-8 text-gray-500">No projects are pending approval.</td></tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
 
-    const isDeposit = walletModal.type === 'deposit';
-    const isCrypto = walletModal.currency === 'crypto';
-    const currencyName = isCrypto ? 'USDT' : 'NGN';
-    const title = `${isDeposit ? 'Deposit' : 'Withdraw'} ${currencyName}`;
+const AdminUserManagement = ({ users }) => {
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">User Management</h2>
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                     <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                     <tbody className="bg-white divide-y divide-gray-200">
+                        {Object.values(users).map(user => (
+                             <tr key={user.id}>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.name}</td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{user.type}</td>
+                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                     <button className="text-indigo-600 hover:text-indigo-900">View Details</button>
+                                 </td>
+                             </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        const numericAmount = parseFloat(amount);
-        if (!isDeposit && (!numericAmount || numericAmount <= 0)) {
+
+// --- MAIN APP COMPONENT --- //
+export default function App() {
+    // State management
+    const [page, setPage] = useState('landing'); // landing, login, register, forgotPassword, investorDashboard, etc.
+    const [currentUser, setCurrentUser] = useState(null);
+    const [users, setUsers] = useState(initialUsers);
+    const [projects, setProjects] = useState(initialProjects);
+    const [portfolios, setPortfolios] = useState(initialPortfolios);
+    const [marketListings, setMarketListings] = useState(initialMarketListings);
+
+    const handleLogout = () => {
+        setCurrentUser(null);
+        setPage('landing');
+    };
+
+    const handleClaimApy = (tokenId, userId) => {
+        setPortfolios(prevPortfolios => {
+            const newPortfolios = JSON.parse(JSON.stringify(prevPortfolios));
+            const userPortfolio = newPortfolios[userId];
+            if (!userPortfolio) return prevPortfolios;
+
+            const token = userPortfolio.tokens.find(t => t.tokenId === tokenId);
+            if (!token) return prevPortfolios;
+
+            const project = projects.find(p => p.id === token.projectId);
+            if (!project) return prevPortfolios;
+
+            const monthlyApyAmount = (token.amount * (project.apy / 100)) / 12;
+
+            // Update user's wallet
+            const userToUpdate = users[currentUser.email];
+            if (userToUpdate) {
+                userToUpdate.wallet.usd += monthlyApyAmount;
+                setUsers(prevUsers => ({...prevUsers, [currentUser.email]: userToUpdate}));
+            }
+            
+            // Update token's last claim date
+            token.lastApyClaimDate = new Date().toISOString();
+            
+            alert(`Successfully claimed ${formatCurrency(monthlyApyAmount)} APY!`);
+
+            return newPortfolios;
+        });
+    };
+
+    const handleListToken = (listingDetails) => {
+        setMarketListings(prevListings => {
+            const newListings = [...prevListings, {
+                listingId: prevListings.length + 1,
+                ...listingDetails
+            }];
+            return newListings;
+        });
+
+        // Optional: Update the token status in the user's portfolio to 'listed'
+        // This part is more complex if they can list partial amounts.
+        // For simplicity here, we can mark the whole token stack as listed.
+        setPortfolios(prev => {
+            const newPortfolios = JSON.parse(JSON.stringify(prev));
+            const userPortfolio = newPortfolios[listingDetails.sellerId];
+            const token = userPortfolio.tokens.find(t => t.tokenId === listingDetails.tokenId);
+            if (token) {
+                 // A simple implementation might mark the whole token as listed.
+                 // A more complex one would split the token stack.
+                 // Here we'll just log it for now and add a status.
+                 token.status = 'listed'; 
+                 alert('Your token has been successfully listed on the secondary market.');
+            }
+            return newPortfolios;
+        });
+
+    };
+    
+    const handleInvest = (projectId, amount) => {
+        if (!amount || amount <= 0) {
+            alert("Please enter a valid investment amount.");
             return;
         }
 
-        const newTransaction = {
-            id: Date.now(),
-            type: isDeposit ? 'Deposit' : 'Withdrawal',
-            amount: isDeposit ? numericAmount : -numericAmount,
-            currency: currencyName,
-            date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
-            status: isDeposit ? 'Completed' : 'Pending',
-        };
+        const fee = amount * 0.015;
+        const totalDebit = amount + fee;
 
-        if(!isDeposit) {
-            if (isCrypto) {
-                setMockUsdtBalance(prev => prev - numericAmount);
-            } else {
-                setMockNgnBalance(prev => prev - numericAmount);
-            }
-        }
-        
-        if (isDeposit) {
-             // Mock deposit confirmation
-             if (isCrypto) {
-                setMockUsdtBalance(prev => prev + numericAmount);
-            } else {
-                setMockNgnBalance(prev => prev + numericAmount);
-            }
-        } else {
-             setTransactions(prev => [newTransaction, ...prev]);
+        if (!currentUser || currentUser.wallet.usd < totalDebit) {
+            alert("Insufficient funds or not logged in.");
+            return;
         }
 
-        closeWalletModal();
-    };
-    
-    const depositAddress = isCrypto ? "0xAbCdEfGhIjKlMnOpQrStUvWxYz1234567890aBcDeF" : "9988776655";
-    const accountName = "QuantuHome Finance";
-
-    const copyToClipboard = (text) => {
-        const textArea = document.createElement("textarea");
-        textArea.value = text;
-        document.body.appendChild(textArea);
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-9999px';
-        textArea.select();
-        try {
-            document.execCommand('copy');
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
-            console.error('Failed to copy text: ', err);
-        }
-        document.body.removeChild(textArea);
-    };
-
-    return (
-        <Modal title={title} onClose={closeWalletModal} maxWidth="max-w-lg">
-            <form onSubmit={handleSubmit} className="space-y-6">
-                {isDeposit ? (
-                    <div className="space-y-4">
-                        <p className="text-gray-300">To deposit {currencyName}, please transfer funds to the details below.</p>
-                        
-                        {!isCrypto && (
-                           <div className="bg-gray-900 p-4 rounded-lg border border-gray-600 space-y-2">
-                               <div className="flex justify-between"><span className="text-gray-400">Bank Name</span> <span className="text-white font-semibold">Providus Bank</span></div>
-                               <div className="flex justify-between"><span className="text-gray-400">Account Name</span> <span className="text-white font-semibold">{accountName}</span></div>
-                               <div className="flex justify-between items-center"><span className="text-gray-400">Account Number</span> 
-                                 <div className="flex items-center space-x-4">
-                                   <span className="text-white font-semibold font-mono">{depositAddress}</span>
-                                   <button type="button" onClick={() => copyToClipboard(depositAddress)} className="text-blue-400 hover:text-blue-300 font-semibold text-sm flex-shrink-0">
-                                     {copied ? 'Copied!' : 'Copy'}
-                                   </button>
-                                 </div>
-                               </div>
-                           </div>
-                        )}
-
-                        {isCrypto && (
-                            <div className="bg-gray-900 p-6 rounded-lg border border-gray-600 text-center">
-                               <p className="text-sm text-gray-400 mb-4">Your {currencyName} Deposit Address (ERC20)</p>
-                               <div className="flex justify-center mb-4 bg-white p-2 rounded-lg inline-block">
-                                    <img 
-                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${depositAddress}&qzone=1`} 
-                                        alt="Deposit QR Code" 
-                                    />
-                               </div>
-                               <div className="flex items-center justify-between mt-2 bg-gray-800 p-2 rounded-md">
-                                 <p className="text-white font-mono break-all text-xs sm:text-sm text-left">{depositAddress}</p>
-                                 <button type="button" onClick={() => copyToClipboard(depositAddress)} className="ml-4 text-blue-400 hover:text-blue-300 font-semibold text-sm flex-shrink-0">
-                                     {copied ? 'Copied!' : 'Copy'}
-                                 </button>
-                               </div>
-                            </div>
-                        )}
-                        <p className="text-xs text-center text-gray-500 pt-2">
-                            {isCrypto ? `Only send ${currencyName} (ERC20) to this address. Sending any other asset will result in a permanent loss.` : 'Deposits are typically credited within 5 minutes.'}
-                        </p>
-                        <button type="button" onClick={closeWalletModal} className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition">Done</button>
-                    </div>
-                ) : (
-                     <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-400 mb-1">Amount ({currencyName})</label>
-                            <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                        </div>
-                        {isCrypto ? (
-                             <div>
-                                <label className="block text-sm font-medium text-gray-400 mb-1">Withdrawal Address (ERC20)</label>
-                                <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder={`Enter destination ${currencyName} address`} required className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                            </div>
-                        ) : (
-                            <div>
-                               <label className="block text-sm font-medium text-gray-400 mb-1">Bank Account</label>
-                                <select className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                                    <option>Select Saved Bank...</option>
-                                    <option>0123456789 - GTBank</option>
-                                </select>
-                            </div>
-                        )}
-                       
-                        <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition mt-6">Submit Withdrawal Request</button>
-                        <p className="text-xs text-gray-500 text-center">Withdrawals are processed within 24 hours. A small network fee applies for crypto withdrawals.</p>
-                    </div>
-                )}
-            </form>
-        </Modal>
-    );
-};
-
-// --- INTERACTIVE INVESTOR DASHBOARD ---
-const InvestorDashboard = ({ projects, setProjects, currentUser, onUserUpdate }) => {
-    const [activeTab, setActiveTab] = useState('dashboard');
-    const [userData, setUserData] = useState(currentUser);
-    const [walletTab, setWalletTab] = useState('crypto'); // 'crypto' or 'fiat'
-    const [helpSubTab, setHelpSubTab] = useState('faq');
-    const [selectedFile, setSelectedFile] = useState(null);
-    const fileInputRef = useRef(null);
-    
-    const chartContainerRef = useRef(null);
-    const allocationContainerRef = useRef(null);
-    const performanceChartRef = useRef(null);
-    const allocationChartRef = useRef(null);
-
-    const chartJsStatus = useScript('https://cdn.jsdelivr.net/npm/chart.js');
-    const dataLabelsPluginStatus = useScript(chartJsStatus === 'ready' ? 'https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js' : null);
-
-
-    const investorProjects = projects.filter(p => p.investors[currentUser.id]);
-    const totalInvested = investorProjects.reduce((acc, p) => acc + (p.investors[currentUser.id] || 0), 0);
-
-
-    const [walletModal, setWalletModal] = useState({ isOpen: false, type: '', currency: '' });
-
-    const [mockNgnBalance, setMockNgnBalance] = useState(750000);
-    const [mockUsdtBalance, setMockUsdtBalance] = useState(2345.50);
-
-    const initialTransactions = [
-        { id: 1, type: 'Deposit', amount: 5000, currency: 'USDT', date: '2023-10-26', status: 'Completed' },
-        { id: 2, type: 'Investment', amount: -2500, currency: 'USDT', date: '2023-10-25', status: 'Completed', project: 'Lekki Pearl' },
-        { id: 3, type: 'APY Claim', amount: 125.50, currency: 'USDT', date: '2023-10-22', status: 'Completed', project: 'Ikoyi Gardens' },
-        { id: 4, type: 'Withdrawal', amount: -1000, currency: 'USDT', date: '2023-10-20', status: 'Pending' },
-        { id: 5, type: 'Deposit', amount: 1000000, currency: 'NGN', date: '2023-10-19', status: 'Completed' },
-        { id: 6, type: 'Withdrawal', amount: -250000, currency: 'NGN', date: '2023-10-18', status: 'Completed' },
-    ];
-    const [transactions, setTransactions] = useState(initialTransactions);
-
-    const investorFaqs = [
-        { q: "What is property tokenization?", a: "Property tokenization is the process of converting the rights to a real estate asset into a digital token on a blockchain. This allows for fractional ownership, meaning you can buy and own a small piece of a larger property, making real estate investing more accessible." },
-        { q: "How do I earn returns on my investment?", a: "You earn returns primarily through the annual percentage yield (APY) paid out from the property's income (e.g., rent). When developers deposit APY funds, you can claim your proportional share directly to your wallet." },
-        { q: "Is my investment secure?", a: "Every project on QuantuHome is backed by a real, physical asset. Your ownership is recorded on a secure blockchain, ensuring transparency. We conduct rigorous due diligence on all listed properties." },
-        { q: "What are the fees on QuantuHome?", a: "QuantuHome charges a 1.5% transaction fee on all platform transactions, including investments, trades, and withdrawals. This fee helps us maintain the platform and ensure its security. There are no hidden fees." },
-        { q: "Why do I need to complete KYC?", a: "Know Your Customer (KYC) is a mandatory regulatory requirement. It helps us prevent fraud and comply with Anti-Money Laundering (AML) laws, ensuring a secure platform for all users." }
-    ];
-
-    useEffect(() => {
-        if (activeTab === 'dashboard' && chartJsStatus ==='ready' && dataLabelsPluginStatus === 'ready' && window.Chart && window.ChartDataLabels && investorProjects.length > 0) {
-            
-            window.Chart.register(window.ChartDataLabels);
-
-            if (performanceChartRef.current) {
-                performanceChartRef.current.destroy();
-            }
-            if (allocationChartRef.current) {
-                allocationChartRef.current.destroy();
-            }
-
-            // Performance Chart
-            const performanceCtx = chartContainerRef.current.getContext('2d');
-            performanceChartRef.current = new window.Chart(performanceCtx, {
-                type: 'line',
-                data: {
-                    labels: ['4m ago', '3m ago', '2m ago', '1m ago', 'Today'],
-                    datasets: [{
-                        label: 'Portfolio Value',
-                        data: [totalInvested * 0.95, totalInvested * 0.98, totalInvested * 1.01, totalInvested * 1.02, totalInvested * 1.05],
-                        borderColor: 'rgba(59, 130, 246, 0.8)',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        fill: true,
-                        tension: 0.4,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { ticks: { color: '#9ca3af' } },
-                        x: { ticks: { color: '#9ca3af' } }
-                    },
-                    plugins: { 
-                        legend: { display: false },
-                        datalabels: { display: false }
-                    }
-                }
-            });
-
-            // Allocation Chart
-            const allocationCtx = allocationContainerRef.current.getContext('2d');
-            const allocationData = {
-                labels: investorProjects.map(p => p.name),
-                datasets: [{
-                    data: investorProjects.map(p => p.investors[currentUser.id]),
-                    backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'],
-                    borderColor: '#111827',
-                    borderWidth: 2,
-                }]
-            };
-            allocationChartRef.current = new window.Chart(allocationCtx, {
-                type: 'doughnut',
-                data: allocationData,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '70%',
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.label || '';
-                                    if (label) {
-                                        label += ': ';
-                                    }
-                                    const value = context.parsed;
-                                    const sum = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = ((value / sum) * 100).toFixed(1) + '%';
-                                    return `${label}$${value.toLocaleString()} (${percentage})`;
-                                }
-                            }
-                        },
-                        datalabels: {
-                             formatter: (value, ctx) => {
-                                 const sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                 const percentage = ((value / sum) * 100).toFixed(1) + "%";
-                                 return percentage;
-                             },
-                             color: '#fff',
-                             font: {
-                                 weight: 'bold',
-                                 size: 12,
-                             },
-                             display: 'auto'
-                        }
-                    }
-                }
-            });
-        }
-
-        return () => {
-            if (performanceChartRef.current) {
-                performanceChartRef.current.destroy();
-            }
-            if (allocationChartRef.current) {
-                allocationChartRef.current.destroy();
+        // 1. Debit investor's wallet
+        const updatedUser = {
+            ...users[currentUser.email],
+            wallet: {
+                ...users[currentUser.email].wallet,
+                usd: users[currentUser.email].wallet.usd - totalDebit
             }
         };
-    }, [activeTab, investorProjects, totalInvested, chartJsStatus, dataLabelsPluginStatus]);
 
-
-    const handleFileSelect = (event) => {
-        if (event.target.files && event.target.files[0]) {
-            setSelectedFile(event.target.files[0]);
-        }
-    };
-
-    const handleAttachClick = () => {
-        fileInputRef.current.click();
-    };
-
-    const handleClaimApy = (projectId) => {
-        const project = projects.find(p => p.id === projectId);
-        const totalInvestment = project.amountRaised;
-        const investorShare = project.investors[currentUser.id] / totalInvestment;
-        const totalApyForMonth = project.apyFundsDeposited;
-        const investorApyPayout = investorShare * totalApyForMonth;
-
-        setProjects(prev => prev.map(p => 
-            p.id === projectId ? {
-                ...p,
-                apyClaimedBy: {...p.apyClaimedBy, [currentUser.id]: true }
-            } : p
-        ));
-    };
-
-    const handleWalletAction = (action, currency) => {
-        setWalletModal({ isOpen: true, type: action, currency });
-    };
-
-    const closeWalletModal = () => {
-        setWalletModal({ isOpen: false, type: '', currency: '' });
-    };
-        
-    const cryptoTransactions = transactions.filter(t => t.currency === 'USDT');
-    const fiatTransactions = transactions.filter(t => t.currency === 'NGN');
-
-    const renderContent = () => {
-        switch (activeTab) {
-            case 'dashboard':
-                const allocationData = investorProjects.map(p => ({
-                    name: p.name,
-                    value: p.investors[currentUser.id]
-                }));
-                const totalAllocation = allocationData.reduce((sum, item) => sum + item.value, 0);
-
-                return (
-                    <div>
-                         <div className="mb-6">
-                            <h2 className="text-4xl font-bold text-white">Investor Dashboard</h2>
-                             <p className="text-lg text-gray-400">Welcome back! Today is {formatDate(new Date())}.</p>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6 mb-6">
-                            <StatCard title="Portfolio Value" value={`$${(totalInvested * 1.05).toLocaleString()}`} subtext="Estimated value inc. appreciation" />
-                            <StatCard title="Total Invested" value={`$${totalInvested.toLocaleString()}`} />
-                            <StatCard title="Lifetime Returns" value={`$${(totalInvested * 0.05).toLocaleString()}`} />
-                            <StatCard title="Projects Invested" value={investorProjects.length} />
-                        </div>
-                         <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-                            <div className="xl:col-span-3 bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                <h3 className="font-semibold text-white mb-4 text-lg">Portfolio Performance</h3>
-                                <div className="h-96">
-                                    {(chartJsStatus === 'ready' && dataLabelsPluginStatus === 'ready') ? <canvas ref={chartContainerRef}></canvas> : <p>Loading Chart...</p>}
-                                </div>
-                            </div>
-                            <div className="xl:col-span-2 bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                <h3 className="font-semibold text-white mb-4 text-lg">Asset Allocation</h3>
-                                <div className="h-64 relative">
-                                    {(chartJsStatus === 'ready' && dataLabelsPluginStatus === 'ready') ? <canvas ref={allocationContainerRef}></canvas> : <p>Loading Chart...</p>}
-                                </div>
-                                <div className="mt-4 space-y-2">
-                                    {allocationData.map((item, index) => (
-                                        <div key={item.name} className="flex justify-between items-center text-sm">
-                                            <div className="flex items-center">
-                                                <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'][index] }}></span>
-                                                <span className="text-gray-300">{item.name}</span>
-                                            </div>
-                                            <span className="font-semibold text-white">{((item.value / totalAllocation) * 100).toFixed(1)}%</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
-            case 'portfolio':
-                return (
-                    <div>
-                        <h2 className="text-4xl font-bold text-white mb-6">My Portfolio</h2>
-                        <div className="space-y-6">
-                            {investorProjects.map(p => {
-                                const userInvestment = p.investors[currentUser.id];
-                                const canClaim = p.apyFundsDeposited > 0 && !p.apyClaimedBy[currentUser.id];
-                                const lockupEndDate = p.fundingDate ? new Date(new Date(p.fundingDate).setMonth(new Date(p.fundingDate).getMonth() + p.term)) : null;
-
-                                return (
-                                    <div key={p.id} className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 flex flex-col sm:flex-row items-center justify-between gap-4">
-                                        <div className="w-full">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <h4 className="text-xl font-bold text-white">{p.name}</h4>
-                                                    <p className="text-gray-300 mt-1">Your Investment: <span className="font-semibold text-green-400">${userInvestment.toLocaleString()}</span></p>
-                                                    <p className="text-sm text-gray-400">Project APY: {p.apy}%</p>
-                                                </div>
-                                                 <button onClick={() => handleClaimApy(p.id)} disabled={!canClaim} className="flex-shrink-0 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition disabled:bg-gray-500 disabled:cursor-not-allowed">
-                                                    {p.apyClaimedBy[currentUser.id] ? 'Claimed' : 'Claim APY'}
-                                                </button>
-                                            </div>
-                                            {lockupEndDate && (
-                                                <div className="mt-4 pt-4 border-t border-gray-700/50">
-                                                    <CountdownTimer targetDate={lockupEndDate} />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    </div>
-                );
-            case 'marketplace':
-                return <Marketplace projects={projects} setProjects={setProjects} currentUser={currentUser} />;
-            case 'wallet':
-                if (!userData.kycVerified) {
-                    return (
-                        <div className="flex flex-col items-center justify-center h-full text-center p-8">
-                            <div className="bg-gray-800 p-8 rounded-2xl border border-gray-700 max-w-md">
-                                <ShieldExclamationIcon className="mx-auto h-16 w-16 text-yellow-400" />
-                                <h3 className="mt-4 text-2xl font-bold text-white">Access Denied</h3>
-                                <p className="mt-2 text-gray-400">Please complete KYC verification in the Settings tab to access your wallet.</p>
-                                <button onClick={() => setActiveTab('settings')} className="mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-5 rounded-lg transition">
-                                    Go to Settings
-                                </button>
-                            </div>
-                        </div>
-                    );
-                }
-                return (
-                    <div>
-                        <h2 className="text-4xl font-bold text-white mb-6">My Wallet</h2>
-                        
-                        <div className="mb-6 border-b border-gray-700">
-                            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                                <button
-                                    onClick={() => setWalletTab('crypto')}
-                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${walletTab === 'crypto' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}
-                                >
-                                    Crypto Wallet
-                                </button>
-                                <button
-                                    onClick={() => setWalletTab('fiat')}
-                                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${walletTab === 'fiat' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}
-                                >
-                                    Fiat Wallet (NGN)
-                                </button>
-                            </nav>
-                        </div>
-
-                        <div>
-                            {walletTab === 'crypto' && (
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                    <div className="lg:col-span-1 space-y-4">
-                                        <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                            <h4 className="text-gray-400 text-sm font-medium">USDT Balance</h4>
-                                            <p className="text-4xl font-bold text-white mt-1">{mockUsdtBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xl text-gray-400">USDT</span></p>
-                                        </div>
-                                        <button onClick={() => handleWalletAction('deposit', 'crypto')} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition">Deposit Crypto</button>
-                                        <button onClick={() => handleWalletAction('withdraw', 'crypto')} className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition">Withdraw Crypto</button>
-                                    </div>
-                                    <div className="lg:col-span-2 bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                        <h3 className="font-semibold text-white mb-4 text-lg">Crypto Transaction History</h3>
-                                        <div className="overflow-x-auto">
-                                        <table className="w-full text-left">
-                                            <thead className="border-b border-gray-700"><tr>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Type</th>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Amount</th>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Date</th>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Status</th>
-                                            </tr></thead>
-                                            <tbody className="divide-y divide-gray-700/50">
-                                                {cryptoTransactions.map(t => (
-                                                    <tr key={t.id}>
-                                                        <td className="py-4 px-2 text-lg text-white">{t.type} {t.project && `(${t.project})`}</td>
-                                                        <td className={`py-4 px-2 font-semibold text-lg ${t.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>{t.amount.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
-                                                        <td className="py-4 px-2 text-lg text-gray-400">{formatDate(t.date)}</td>
-                                                        <td className="py-4 px-2"><span className={`px-2 py-1 text-sm font-semibold rounded-full ${t.status === 'Completed' ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'}`}>{t.status}</span></td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {walletTab === 'fiat' && (
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                    <div className="lg:col-span-1 space-y-4">
-                                        <div className="bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                            <h4 className="text-gray-400 text-sm font-medium">NGN Balance</h4>
-                                            <p className="text-4xl font-bold text-white mt-1">₦{mockNgnBalance.toLocaleString()}</p>
-                                        </div>
-                                        <button onClick={() => handleWalletAction('deposit', 'fiat')} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition">Deposit Fiat</button>
-                                        <button onClick={() => handleWalletAction('withdraw', 'fiat')} className="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition">Withdraw Fiat</button>
-                                    </div>
-                                    <div className="lg:col-span-2 bg-gray-800/50 p-6 rounded-xl border border-gray-700/50">
-                                        <h3 className="font-semibold text-white mb-4 text-lg">Fiat Transaction History</h3>
-                                        <div className="overflow-x-auto">
-                                        <table className="w-full text-left">
-                                            <thead className="border-b border-gray-700"><tr>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Type</th>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Amount</th>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Date</th>
-                                                <th className="py-3 px-2 text-base font-semibold text-gray-400">Status</th>
-                                            </tr></thead>
-                                            <tbody className="divide-y divide-gray-700/50">
-                                                {fiatTransactions.map(t => (
-                                                    <tr key={t.id}>
-                                                        <td className="py-4 px-2 text-lg text-white">{t.type}</td>
-                                                        <td className={`py-4 px-2 font-semibold text-lg ${t.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>{`₦${t.amount.toLocaleString()}`}</td>
-                                                        <td className="py-4 px-2 text-lg text-gray-400">{formatDate(t.date)}</td>
-                                                        <td className="py-4 px-2"><span className={`px-2 py-1 text-sm font-semibold rounded-full ${t.status === 'Completed' ? 'bg-green-500/20 text-green-300' : 'bg-yellow-500/20 text-yellow-300'}`}>{t.status}</span></td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                );
-            case 'settings':
-                return (
-                    <div>
-                        <h2 className="text-4xl font-bold text-white mb-6">Settings</h2>
-                        <div className="space-y-6 max-w-2xl">
-                            <KycPanel user={userData} setUser={(updatedUser) => { setUserData(updatedUser); onUserUpdate(updatedUser); }} />
-                            <TwoFactorAuthPanel user={userData} setUser={(updatedUser) => { setUserData(updatedUser); onUserUpdate(updatedUser); }} />
-                        </div>
-                    </div>
-                );
-            case 'help':
-                return (
-                    <div>
-                        <h2 className="text-4xl font-bold text-white mb-6">Help & Support</h2>
-                        <div className="mb-6 border-b border-gray-700">
-                            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-                                <button onClick={() => setHelpSubTab('faq')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${helpSubTab === 'faq' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
-                                    FAQ
-                                </button>
-                                <button onClick={() => setHelpSubTab('chat')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-lg ${helpSubTab === 'chat' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'}`}>
-                                    Live Chat
-                                </button>
-                            </nav>
-                        </div>
-                        {helpSubTab === 'faq' && (
-                            <div className="max-w-4xl space-y-4">
-                                {investorFaqs.map((faq, index) => <FAQItem key={index} question={faq.q} answer={faq.a} />)}
-                            </div>
-                        )}
-                        {helpSubTab === 'chat' && (
-                             <div className="max-w-2xl mx-auto bg-gray-800/50 rounded-xl shadow-lg border border-gray-700/50">
-                                <div className="p-4 border-b border-gray-700">
-                                    <h3 className="text-xl font-bold text-white">Support Chat</h3>
-                                    <p className="text-sm text-gray-400 flex items-center"><span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>Support is online</p>
-                                </div>
-                                <div className="p-6 h-96 overflow-y-auto space-y-4">
-                                    {/* Chat messages */}
-                                    <div className="flex justify-start">
-                                        <div className="bg-gray-700 text-white p-3 rounded-lg max-w-xs">
-                                            <p>Hello! How can we help you today?</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="p-4 bg-gray-900/50 border-t border-gray-700">
-                                     {selectedFile && (
-                                        <div className="text-sm text-gray-400 mb-2 px-4 flex justify-between items-center">
-                                            <span>Attached: {selectedFile.name}</span>
-                                            <button onClick={() => setSelectedFile(null)} className="text-red-400 hover:text-red-300">&times;</button>
-                                        </div>
-                                    )}
-                                    <form className="flex items-center space-x-4">
-                                        <input type="text" placeholder="Type your message..." className="flex-1 bg-gray-700 border border-gray-600 rounded-full px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"/>
-                                        <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" />
-                                        <button type="button" onClick={handleAttachClick} className="text-gray-400 hover:text-white">
-                                            <PaperclipIcon />
-                                        </button>
-                                        <button type="submit" className="bg-blue-600 text-white px-6 py-2 rounded-full font-semibold hover:bg-blue-700">Send</button>
-                                    </form>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                );
-            default:
-                return null;
-        }
-    };
-    
-    return (
-        <div className="flex h-full">
-            {walletModal.isOpen && <WalletActionModal walletModal={walletModal} closeWalletModal={closeWalletModal} setMockNgnBalance={setMockNgnBalance} setMockUsdtBalance={setMockUsdtBalance} setTransactions={setTransactions}/>}
-            <aside className="w-64 pr-8 border-r border-gray-700 flex-shrink-0">
-                <div className="py-8 lg:py-12">
-                    <nav className="space-y-2">
-                        <NavItem icon={<DashboardIcon />} label="Dashboard" tabName="dashboard" activeTab={activeTab} setActiveTab={setActiveTab} />
-                        <NavItem icon={<PortfolioIcon />} label="Portfolio" tabName="portfolio" activeTab={activeTab} setActiveTab={setActiveTab} />
-                        <NavItem icon={<MarketplaceIcon />} label="Marketplace" tabName="marketplace" activeTab={activeTab} setActiveTab={setActiveTab} />
-                        <NavItem icon={<WalletIcon />} label="Wallet" tabName="wallet" activeTab={activeTab} setActiveTab={setActiveTab} disabled={!userData.kycVerified} />
-                        <NavItem icon={<SettingsIcon />} label="Settings" tabName="settings" activeTab={activeTab} setActiveTab={setActiveTab} />
-                        <NavItem icon={<HelpIcon />} label="Help & Support" tabName="help" activeTab={activeTab} setActiveTab={setActiveTab} />
-                    </nav>
-                </div>
-            </aside>
-            <main className="flex-grow pl-8 overflow-y-auto">
-                <div className="py-8 lg:py-12">
-                    {renderContent()}
-                </div>
-            </main>
-        </div>
-    );
-};
-
-const LoginOrRegister = ({ onLogin }) => {
-    const [view, setView] = useState('login');
-
-    return (
-        <div className="max-w-md mx-auto mt-20 bg-gray-800/50 p-8 rounded-xl shadow-2xl border border-gray-700/50">
-             <div className="flex border-b border-gray-600 mb-6">
-                <button onClick={() => setView('login')} className={`flex-1 py-2 font-semibold text-center transition ${view === 'login' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>Log In</button>
-                <button onClick={() => setView('register')} className={`flex-1 py-2 font-semibold text-center transition ${view === 'register' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}>Register</button>
-            </div>
-
-            {view === 'login' && (
-                <div className="space-y-4">
-                     <input type="email" placeholder="Email" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                     <input type="password" placeholder="Password" className="w-full bg-gray-900 border border-gray-600 rounded-lg p-3 text-white focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                     <button onClick={() => onLogin(users.investor1)} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition">Log In</button>
-                     <p className="text-center text-sm text-gray-400">For demo, login as <span onClick={() => onLogin(users.investor1)} className="text-blue-400 cursor-pointer">investor</span> or <span onClick={() => onLogin(users.dev1)} className="text-blue-400 cursor-pointer">developer</span> or <span onClick={() => onLogin(users.admin)} className="text-blue-400 cursor-pointer">admin</span>.</p>
-                </div>
-            )}
-
-            {view === 'register' && (
-                 <div className="space-y-4">
-                    <p className="text-center text-gray-300">Join QuantuHome to start building your digital real estate portfolio.</p>
-                    <button onClick={() => onLogin(users.investor2)} className="w-full text-left p-4 rounded-lg bg-gray-700 hover:bg-blue-600 transition flex items-center space-x-4">
-                        <PortfolioIcon />
-                        <div><p className="font-bold text-lg">Register as an Investor</p><p className="text-sm text-gray-400">Start investing in properties.</p></div>
-                    </button>
-                    <button onClick={() => onLogin(users.dev2)} className="w-full text-left p-4 rounded-lg bg-gray-700 hover:bg-blue-600 transition flex items-center space-x-4">
-                       <ProjectIcon />
-                       <div><p className="font-bold text-lg">Register as a Developer</p><p className="text-sm text-gray-400">Get your projects funded.</p></div>
-                    </button>
-                 </div>
-            )}
-        </div>
-    );
-}
-
-const DashboardContainer = ({ onLogout }) => {
-    const [currentUser, setCurrentUser] = useState(null);
-    const [projects, setProjects] = useState(initialProjects);
-    const [showOnboarding, setShowOnboarding] = useState(false);
-    const [isNotificationOpen, setNotificationOpen] = useState(false);
-    const [notifications, setNotifications] = useState(initialNotifications);
-    const notificationRef = useRef(null);
-
-    const userNotifications = notifications.filter(n => n.userId === currentUser?.id || n.userId === 'admin' || n.userId === 'all'); 
-    const hasUnread = userNotifications.some(n => !n.read);
-
-    const handleMarkAllAsRead = () => {
-        setNotifications(prev =>
-            prev.map(n =>
-                n.userId === currentUser?.id ? { ...n, read: true } : n
-            )
-        );
-    };
-
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (notificationRef.current && !notificationRef.current.contains(event.target)) {
-                setNotificationOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
-    }, [notificationRef]);
-
-    
-    useEffect(() => {
-        if (currentUser && currentUser.role === 'Developer' && !currentUser.onboarded) {
-            setShowOnboarding(true);
-        } else {
-            setShowOnboarding(false);
-        }
-    }, [currentUser]);
-
-    const handleLogin = (user) => {
-        setCurrentUser(user);
-    };
-
-    const handleInternalLogout = () => {
-        setCurrentUser(null);
-    };
-    
-    const updateUserInState = (updatedUser) => {
-        // This persists KYC/onboarding changes from the modals
-        const userKey = Object.keys(users).find(key => users[key].id === updatedUser.id);
-        if(userKey) {
-            users[userKey] = updatedUser;
-        }
         setCurrentUser(updatedUser);
+        setUsers(prevUsers => ({
+            ...prevUsers,
+            [currentUser.email]: updatedUser
+        }));
+
+        // 2. Update project's amountRaised
+        setProjects(prevProjects => prevProjects.map(p => 
+            p.id === projectId 
+            ? { ...p, amountRaised: p.amountRaised + amount, status: (p.amountRaised + amount) >= p.fundingGoal ? 'funded' : p.status } 
+            : p
+        ));
+
+        // 3. Create new tokens for the investor
+        setPortfolios(prevPortfolios => {
+            const newPortfolios = JSON.parse(JSON.stringify(prevPortfolios));
+            const userPortfolio = newPortfolios[currentUser.id] || { tokens: [] };
+            
+            userPortfolio.tokens.push({
+                tokenId: `proj${projectId}-sec-${Date.now()}`,
+                projectId,
+                type: 'SECURITY',
+                amount,
+                originalOwnerId: currentUser.id,
+                lastApyClaimDate: new Date().toISOString(),
+            });
+            userPortfolio.tokens.push({
+                tokenId: `proj${projectId}-mkt-${Date.now()}`,
+                projectId,
+                type: 'MARKET',
+                amount,
+                ownerId: currentUser.id,
+                status: 'held',
+            });
+            newPortfolios[currentUser.id] = userPortfolio;
+            return newPortfolios;
+        });
+        alert(`Congratulations! Your investment of ${formatCurrency(amount)} was successful.`);
     };
 
-    const renderDashboard = () => {
-        if (!currentUser) return null;
-        if (showOnboarding) {
-            return <DeveloperOnboarding user={currentUser} setUser={updateUserInState}/>
+    const renderPage = () => {
+        if (currentUser) {
+            switch (currentUser.type) {
+                case 'investor': return <InvestorDashboard currentUser={currentUser} projects={projects} portfolios={portfolios} marketListings={marketListings} onLogout={handleLogout} onClaimApy={handleClaimApy} onListToken={handleListToken} onInvest={handleInvest} />;
+                case 'developer': return <DeveloperDashboard currentUser={currentUser} projects={projects} portfolios={portfolios} marketListings={marketListings} onLogout={handleLogout} />;
+                case 'admin': return <AdminDashboard currentUser={currentUser} projects={projects} users={users} onLogout={handleLogout} />;
+                default:
+                    // If user type is unknown, log them out.
+                    setCurrentUser(null);
+                    return <LandingPage setPage={setPage} projects={projects} />;
+            }
         }
 
-        switch (currentUser.role) {
-            case 'Admin': return <AdminDashboard projects={projects} setProjects={setProjects} />;
-            case 'Developer': return <DeveloperDashboard projects={projects} setProjects={setProjects} currentUser={currentUser} onUserUpdate={updateUserInState} />;
-            case 'Investor': return <InvestorDashboard projects={projects} setProjects={setProjects} currentUser={currentUser} onUserUpdate={updateUserInState} />;
-            default: return null;
+        switch (page) {
+            case 'login': return <LoginPage setPage={setPage} setCurrentUser={setCurrentUser} users={users} />;
+            case 'register': return <RegisterPage setPage={setPage} />;
+            case 'forgotPassword': return <ForgotPasswordPage setPage={setPage} />;
+            case 'landing':
+            default:
+                return <LandingPage setPage={setPage} projects={projects} />;
         }
     };
     
-     return (
-        <div className="bg-gray-900 text-white h-screen font-sans flex flex-col">
-            <header className="bg-gray-900/80 backdrop-blur-sm border-b border-gray-800 p-4 lg:px-8 flex justify-between items-center z-10 flex-shrink-0">
-                <div className="flex items-center space-x-3 cursor-pointer" onClick={onLogout}>
-                    <svg className="w-8 h-8 text-blue-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"></path></svg>
-                    <h1 className="text-2xl font-bold">QuantuHome</h1>
-                </div>
-                {currentUser && (
-                     <div className="flex items-center space-x-6">
-                        <div className="relative" ref={notificationRef}>
-                             <button onClick={() => setNotificationOpen(prev => !prev)} className="relative text-gray-400 hover:text-white">
-                                 <BellSVG />
-                                 {hasUnread && <span className="absolute top-0 right-0 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-gray-900"></span>}
-                             </button>
-                             {isNotificationOpen && <NotificationPanel userNotifications={userNotifications} onMarkAsRead={handleMarkAllAsRead} />}
-                         </div>
-                        <span className="text-gray-300 hidden sm:inline">Welcome, <span className="font-semibold text-white">{currentUser.name}</span> ({currentUser.role})</span>
-                        <button onClick={handleInternalLogout} className="bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition">Sign Out</button>
-                    </div>
-                )}
-            </header>
-            
-            <main className="flex-grow overflow-hidden">
-                {!currentUser ? (
-                    <div className="h-full overflow-y-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
-                        <LoginOrRegister onLogin={handleLogin} />
-                    </div>
-                ) : (
-                    <div className="max-w-screen-2xl mx-auto h-full px-4 sm:px-6 lg:px-8">
-                        {renderDashboard()}
-                    </div>
-                )}
+    // Determine if the header should be shown. Auth pages have their own minimal UI.
+    const showHeader = !['login', 'register', 'forgotPassword'].includes(page) && !currentUser;
+
+    return (
+        <div className="font-sans antialiased text-gray-800 flex flex-col min-h-screen">
+            {showHeader && <Header page={page} currentUser={currentUser} setPage={setPage} setCurrentUser={setCurrentUser} />}
+            <main className="flex-1 flex flex-col">
+                {renderPage()}
             </main>
         </div>
     );
 }
-
-
-// --- MAIN APP COMPONENT ---
-
-export default function App() {
-    const [appState, setAppState] = useState('landing'); // 'landing' or 'dashboard'
-
-    switch (appState) {
-        case 'landing':
-            return <LandingPage onEnterApp={() => setAppState('dashboard')} />;
-        case 'dashboard':
-            return <DashboardContainer onLogout={() => setAppState('landing')} />;
-        default:
-            return null;
-    }
-}
-
-
-
-
-
-
-
-
-
 
 
