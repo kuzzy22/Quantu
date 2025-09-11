@@ -1,4 +1,4 @@
- import React, { useState, useEffect, useMemo } from 'react';
+  import React, { useState, useEffect, useMemo } from 'react';
 
 // --- MOCK DATA --- //
 // In a real application, this data would come from a secure backend and blockchain.
@@ -231,6 +231,10 @@ const LinkedinIcon = (props) => (
 );
 const InstagramIcon = (props) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+);
+
+const MenuIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
 );
 
 
@@ -841,38 +845,66 @@ const ProjectCard = ({ project, setPage, onViewDetails }) => {
 
 // --- DASHBOARD COMPONENTS --- //
 const DashboardLayout = ({ children, sidebarItems, activeItem, setActiveItem, onLogout, currentUser }) => {
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+    const handleNavItemClick = (itemName) => {
+        setActiveItem(itemName);
+        setIsMobileMenuOpen(false);
+    };
+
+    const SidebarContent = () => (
+        <div className="flex-grow">
+            <div className="p-6">
+                 <div className="flex items-center gap-2">
+                    <KayzeraLogo className="h-8 w-8" />
+                    <span className="text-xl font-bold text-gray-800">Kayzera</span>
+                </div>
+            </div>
+            <nav className="mt-6">
+                {sidebarItems.map(item => (
+                    <a 
+                        key={item.name} 
+                        href="#" 
+                        onClick={() => handleNavItemClick(item.name)} 
+                        className={`flex items-center py-3 px-6 text-gray-600 transition-colors duration-200 ${activeItem === item.name ? 'bg-indigo-50 text-indigo-600 border-r-4 border-indigo-500' : 'hover:bg-gray-50'}`}
+                    >
+                        {item.icon}
+                        <span className="mx-4 font-medium">{item.name}</span>
+                    </a>
+                ))}
+            </nav>
+        </div>
+    );
+
     return (
         <div className="bg-gray-100 flex-1 flex">
             <div className="flex w-full">
-                {/* Sidebar */}
+                {/* Desktop Sidebar */}
                 <aside className="w-64 bg-white shadow-md hidden md:flex flex-col">
-                    <div className="flex-grow">
-                        <div className="p-6">
-                             <div className="flex items-center gap-2">
-                                <KayzeraLogo className="h-8 w-8" />
-                                <span className="text-xl font-bold text-gray-800">Kayzera</span>
-                            </div>
-                        </div>
-                        <nav className="mt-6">
-                            {sidebarItems.map(item => (
-                                <a 
-                                    key={item.name} 
-                                    href="#" 
-                                    onClick={() => setActiveItem(item.name)} 
-                                    className={`flex items-center py-3 px-6 text-gray-600 transition-colors duration-200 ${activeItem === item.name ? 'bg-indigo-50 text-indigo-600 border-r-4 border-indigo-500' : 'hover:bg-gray-50'}`}
-                                >
-                                    {item.icon}
-                                    <span className="mx-4 font-medium">{item.name}</span>
-                                </a>
-                            ))}
-                        </nav>
-                    </div>
+                    <SidebarContent />
                 </aside>
+
+                {/* Mobile Sidebar */}
+                {isMobileMenuOpen && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden" onClick={() => setIsMobileMenuOpen(false)}></div>
+                )}
+                <aside className={`fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-30 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out md:hidden`}>
+                     <button onClick={() => setIsMobileMenuOpen(false)} className="absolute top-4 right-4 text-gray-500 hover:text-gray-800 p-1">
+                        <XIcon className="h-6 w-6" />
+                    </button>
+                    <SidebarContent />
+                </aside>
+
 
                 {/* Main Content */}
                 <main className="flex-1 flex flex-col h-screen">
                      <div className="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10 border-b">
-                        <h1 className="text-2xl font-bold text-gray-800">{activeItem}</h1>
+                        <div className="flex items-center">
+                             <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden mr-4 p-2 rounded-full text-gray-500 hover:text-indigo-600">
+                                <MenuIcon className="h-6 w-6"/>
+                            </button>
+                            <h1 className="text-2xl font-bold text-gray-800">{activeItem}</h1>
+                        </div>
                         <div className="flex items-center gap-4">
                              <div className="hidden sm:flex items-center gap-4">
                                 <span className="text-gray-700 text-sm">Welcome, {currentUser.name.split(' ')[0]}</span>
@@ -2960,18 +2992,6 @@ export default function App() {
         </div>
     );
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
