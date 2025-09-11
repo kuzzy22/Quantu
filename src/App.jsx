@@ -1,4 +1,4 @@
-   import React, { useState, useEffect, useMemo } from 'react';
+     import React, { useState, useEffect, useMemo } from 'react';
 
 // --- MOCK DATA --- //
 // In a real application, this data would come from a secure backend and blockchain.
@@ -10,7 +10,7 @@ const initialUsers = {
     name: 'Ada Lovelace', 
     email: 'investor@demo.com', 
     password: 'password123', 
-    wallet: { usd: 50000, ngn: 5000000, usdt: 1250.50, usdc: 800.25 },
+    wallet: { ngn: 5000000, usdt: 1250.50, usdc: 800.25 },
     kycStatus: 'Verified', // 'Not Submitted', 'Pending', 'Verified'
     twoFactorEnabled: true,
   },
@@ -20,7 +20,7 @@ const initialUsers = {
     name: 'Charles Babbage', 
     email: 'developer@demo.com', 
     password: 'password123', 
-    wallet: { usd: 10000, ngn: 1200000, usdt: 500, usdc: 100 },
+    wallet: { ngn: 1200000, usdt: 500, usdc: 100 },
     companyProfile: {
         name: 'Babbage Constructions Ltd.',
         regNumber: 'RC123456',
@@ -30,14 +30,14 @@ const initialUsers = {
     twoFactorEnabled: false,
     treasuryAddress: '0x1234ABCD5678EFGH9101KLMN1213OPQR1415STUV', // Collected during KYC
   },
-  'admin@demo.com': { id: 3, type: 'admin', name: 'Admin Grace Hopper', email: 'admin@demo.com', password: 'password123', wallet: { usd: 0, ngn: 0, usdt: 0, usdc: 0 } },
+  'admin@demo.com': { id: 3, type: 'admin', name: 'Admin Grace Hopper', email: 'admin@demo.com', password: 'password123', wallet: { ngn: 0, usdt: 0, usdc: 0 } },
   'buyer@demo.com': { 
     id: 4, 
     type: 'investor', 
     name: 'Bayo Adekunle', 
     email: 'buyer@demo.com', 
     password: 'password123', 
-    wallet: { usd: 75000, ngn: 2500000, usdt: 2000, usdc: 1500 },
+    wallet: { ngn: 2500000, usdt: 2000, usdc: 1500 },
     kycStatus: 'Not Submitted',
     twoFactorEnabled: false,
   },
@@ -237,6 +237,10 @@ const MenuIcon = (props) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
 );
 
+const BellIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+);
+
 
 const LockupTimer = ({ endDate }) => {
     const calculateTimeLeft = () => {
@@ -352,11 +356,6 @@ const Header = ({ page, currentUser, setPage, setCurrentUser }) => {
                         {currentUser ? (
                             <div className="flex items-center ml-4 md:ml-6">
                                 <span className="text-gray-700 text-sm mr-4">Welcome, {currentUser.name.split(' ')[0]}</span>
-                                {currentUser.wallet && (
-                                    <div className="hidden sm:block bg-green-100 text-green-800 text-sm font-bold px-3 py-1.5 rounded-full mr-4">
-                                        {formatCurrency(currentUser.wallet.usd)}
-                                    </div>
-                                )}
                                 <button onClick={() => setPage(getDashboardLink())} className="p-2 rounded-full text-gray-500 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-2">
                                     <UserIcon className="h-6 w-6" />
                                 </button>
@@ -844,8 +843,44 @@ const ProjectCard = ({ project, setPage, onViewDetails }) => {
 };
 
 // --- DASHBOARD COMPONENTS --- //
-const DashboardLayout = ({ children, sidebarItems, activeItem, setActiveItem, onLogout, currentUser }) => {
+const DashboardLayout = ({ children, sidebarItems, activeItem, setActiveItem, onLogout, currentUser, totalBalance }) => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [notificationsOpen, setNotificationsOpen] = useState(false);
+    const [notifications, setNotifications] = useState([]);
+    const notificationContainerRef = React.useRef(null);
+
+    useEffect(() => {
+        // Tailor notifications based on user type
+        if (currentUser.type === 'admin') {
+            setNotifications([
+                { id: 1, text: 'New project "Ikeja Tech Hub" submitted for approval.', read: false, time: '5m ago' },
+                { id: 2, text: 'User Bayo Adekunle has submitted KYC documents.', read: false, time: '1h ago' },
+                { id: 3, text: 'Eko Atlantic Tower has reached 50% funding.', read: true, time: '4h ago' },
+                { id: 4, text: 'New developer account created: Babbage Constructions Ltd.', read: true, time: '1d ago' },
+                { id: 5, text: 'Large withdrawal request ($25,000) initiated by Ada Lovelace.', read: true, time: '2d ago' },
+            ]);
+        } else { // Default for investor/developer
+            setNotifications([
+                { id: 1, text: 'Your KYC has been approved.', read: false, time: '2h ago' },
+                { id: 2, text: 'Lekki Pearl Residence is now fully funded!', read: false, time: '1d ago' },
+                { id: 3, text: 'Welcome to Kayzera! Complete your profile to start investing.', read: true, time: '3d ago' },
+            ]);
+        }
+    }, [currentUser.type]);
+
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (notificationContainerRef.current && !notificationContainerRef.current.contains(event.target)) {
+                setNotificationsOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
 
     const handleNavItemClick = (itemName) => {
         setActiveItem(itemName);
@@ -905,15 +940,62 @@ const DashboardLayout = ({ children, sidebarItems, activeItem, setActiveItem, on
                             </button>
                             <h1 className="text-2xl font-bold text-gray-800">{activeItem}</h1>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
                              <div className="hidden sm:flex items-center gap-4">
                                 <span className="text-gray-700 text-sm">Welcome, {currentUser.name.split(' ')[0]}</span>
                                 {currentUser.wallet && (
                                      <div className="bg-green-100 text-green-800 text-sm font-bold px-3 py-1.5 rounded-full">
-                                        {formatCurrency(currentUser.wallet.usd)}
+                                        {formatCurrency(totalBalance)}
                                     </div>
                                 )}
                             </div>
+                            
+                            <div className="relative" ref={notificationContainerRef}>
+                                <button 
+                                    onClick={() => setNotificationsOpen(prev => !prev)}
+                                    className="relative p-2 rounded-full text-gray-500 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                    title="Notifications"
+                                >
+                                    <BellIcon className="h-6 w-6" />
+                                    {notifications.some(n => !n.read) && (
+                                        <span className="absolute top-2 right-2 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+                                    )}
+                                </button>
+                                {notificationsOpen && (
+                                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl overflow-hidden z-20 border">
+                                        <div className="p-4 flex justify-between items-center border-b">
+                                            <h4 className="font-semibold text-gray-800">Notifications</h4>
+                                            <button
+                                                onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))}
+                                                className="text-xs font-medium text-indigo-600 hover:text-indigo-800 disabled:text-gray-400"
+                                                disabled={!notifications.some(n => !n.read)}
+                                            >
+                                                Mark all as read
+                                            </button>
+                                        </div>
+                                        <div className="divide-y max-h-96 overflow-y-auto">
+                                            {notifications.length > 0 ? (
+                                                notifications.map(notification => (
+                                                    <div
+                                                        key={notification.id}
+                                                        onClick={() => setNotifications(notifications.map(n => n.id === notification.id ? { ...n, read: true } : n))}
+                                                        className={`p-4 flex items-start cursor-pointer hover:bg-gray-50 ${!notification.read ? 'bg-indigo-50' : ''}`}
+                                                    >
+                                                        <div className={`flex-shrink-0 w-2 h-2 mt-1.5 rounded-full ${!notification.read ? 'bg-indigo-500' : 'bg-transparent'}`}></div>
+                                                        <div className="ml-3">
+                                                            <p className="text-sm text-gray-700">{notification.text}</p>
+                                                            <p className="text-xs text-gray-500 mt-1">{notification.time}</p>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <p className="text-center text-gray-500 py-8">No new notifications.</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             <button 
                                 onClick={onLogout} 
                                 className="p-2 rounded-full text-gray-500 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
@@ -1152,8 +1234,8 @@ const PortfolioPerformanceChart = ({ data }) => {
 };
 
 const AssetAllocationChart = ({ data }) => {
-    const size = 150;
-    const strokeWidth = 20;
+    const size = 200;
+    const strokeWidth = 25;
     const radius = (size - strokeWidth) / 2;
     const circumference = 2 * Math.PI * radius;
     const totalValue = data.reduce((sum, item) => sum + item.value, 0);
@@ -1212,7 +1294,7 @@ const AssetAllocationChart = ({ data }) => {
 };
 
 
-const InvestorDashboard = ({ currentUser, projects, portfolios, marketListings, onLogout, onClaimApy, onListToken, onInvest }) => {
+const InvestorDashboard = ({ currentUser, projects, portfolios, marketListings, onLogout, onClaimApy, onListToken, onInvest, totalBalance }) => {
     const [activeItem, setActiveItem] = useState('Dashboard');
 
     const sidebarItems = [
@@ -1242,7 +1324,7 @@ const InvestorDashboard = ({ currentUser, projects, portfolios, marketListings, 
     };
 
     return (
-        <DashboardLayout currentUser={currentUser} sidebarItems={sidebarItems} activeItem={activeItem} setActiveItem={setActiveItem} onLogout={onLogout}>
+        <DashboardLayout currentUser={currentUser} sidebarItems={sidebarItems} activeItem={activeItem} setActiveItem={setActiveItem} onLogout={onLogout} totalBalance={totalBalance}>
             {renderContent()}
         </DashboardLayout>
     );
@@ -1256,7 +1338,9 @@ const InvestorDashboardOverview = ({ currentUser, projects, portfolios }) => {
             .filter(t => t.type === 'SECURITY')
             .reduce((sum, token) => sum + token.amount, 0);
 
-        const portfolioValue = userPortfolio.tokens.reduce((sum, token) => sum + token.amount, 0);
+        // The portfolio value should represent the value of the underlying assets (security tokens).
+        // Market tokens are for liquidity and don't add to the total value, as they represent the same asset.
+        const portfolioValue = totalInvestment;
         
         const lifetimeApy = totalInvestment * 0.15 * 1.2; // Mock calculation for lifetime earnings
 
@@ -1271,6 +1355,8 @@ const InvestorDashboardOverview = ({ currentUser, projects, portfolios }) => {
         { id: 3, type: 'Deposit', project: 'USD Wallet', amount: 25000, date: '2025-07-15' },
     ];
 
+    const cryptoBalance = currentUser.wallet.usdt + currentUser.wallet.usdc;
+
     const performanceData = [
       { month: 'Apr', value: 13000 },
       { month: 'May', value: 14500 },
@@ -1282,15 +1368,17 @@ const InvestorDashboardOverview = ({ currentUser, projects, portfolios }) => {
 
     const allocationData = useMemo(() => {
         const allocation = {};
-        userPortfolio.tokens.forEach(token => {
-            const project = projects.find(p => p.id === token.projectId);
-            if (project) {
-                if (!allocation[project.title]) {
-                    allocation[project.title] = 0;
+        userPortfolio.tokens
+            .filter(token => token.type === 'SECURITY') // Filter for only security tokens
+            .forEach(token => {
+                const project = projects.find(p => p.id === token.projectId);
+                if (project) {
+                    if (!allocation[project.title]) {
+                        allocation[project.title] = 0;
+                    }
+                    allocation[project.title] += token.amount;
                 }
-                allocation[project.title] += token.amount;
-            }
-        });
+            });
         const colors = ['#4f46e5', '#818cf8', '#a78bfa', '#c4b5fd'];
         return Object.entries(allocation).map(([name, value], index) => ({
             name,
@@ -1304,9 +1392,9 @@ const InvestorDashboardOverview = ({ currentUser, projects, portfolios }) => {
          <div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <StatCard title="Portfolio Value" value={formatCurrency(stats.portfolioValue)} icon={<WalletIcon className="w-6 h-6" />} />
-                <StatCard title="Total Investment" value={formatCurrency(stats.totalInvestment)} icon={<DollarSignIcon className="w-6 h-6" />} />
+                <StatCard title="NGN Balance" value={formatNgnCurrency(currentUser.wallet.ngn)} icon={<WalletIcon className="w-6 h-6" />} />
+                <StatCard title="Crypto Balance" value={formatCurrency(cryptoBalance)} icon={<WalletIcon className="w-6 h-6" />} />
                 <StatCard title="Lifetime APY Earned" value={formatCurrency(stats.lifetimeApy)} icon={<TrendingUpIcon className="w-6 h-6" />} />
-                <StatCard title="Projects Invested" value={stats.uniqueProjects} icon={<BuildingIcon className="w-6 h-6" />} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
@@ -1467,13 +1555,60 @@ const InvestorMyTokens = ({ currentUser, projects, portfolios, onClaimApy, onLis
 
 const ListTokenModal = ({ isOpen, onClose, token, project, onConfirmList, currentUser }) => {
     const [amount, setAmount] = useState('');
-    const [price, setPrice] = useState('');
+    const [totalPrice, setTotalPrice] = useState('');
+    const [pricePerToken, setPricePerToken] = useState('');
+    const [activeInput, setActiveInput] = useState('total'); // 'total' or 'perToken'
     const [error, setError] = useState('');
+    const [step, setStep] = useState('input'); // 'input', 'confirm'
+
+    const handleAmountChange = (value) => {
+        setAmount(value);
+        const numericAmount = parseFloat(value);
+        if (activeInput === 'total') {
+            const numericTotalPrice = parseFloat(totalPrice);
+            if (numericAmount > 0 && numericTotalPrice > 0) {
+                setPricePerToken((numericTotalPrice / numericAmount).toFixed(4));
+            } else {
+                setPricePerToken('');
+            }
+        } else { // activeInput === 'perToken'
+            const numericPricePerToken = parseFloat(pricePerToken);
+            if (numericAmount > 0 && numericPricePerToken > 0) {
+                setTotalPrice((numericAmount * numericPricePerToken).toFixed(2));
+            } else {
+                setTotalPrice('');
+            }
+        }
+    };
+
+    const handleTotalPriceChange = (value) => {
+        setActiveInput('total');
+        setTotalPrice(value);
+        const numericAmount = parseFloat(amount);
+        const numericTotalPrice = parseFloat(value);
+        if (numericAmount > 0 && numericTotalPrice >= 0) {
+            setPricePerToken((numericTotalPrice / numericAmount).toFixed(4));
+        } else {
+            setPricePerToken('');
+        }
+    };
+
+    const handlePricePerTokenChange = (value) => {
+        setActiveInput('perToken');
+        setPricePerToken(value);
+        const numericAmount = parseFloat(amount);
+        const numericPricePerToken = parseFloat(value);
+        if (numericAmount > 0 && numericPricePerToken >= 0) {
+            setTotalPrice((numericAmount * numericPricePerToken).toFixed(2));
+        } else {
+            setTotalPrice('');
+        }
+    };
 
     const handleSubmit = (e) => {
         e.preventDefault();
         setError('');
-        if (!amount || !price || +amount <= 0 || +price <= 0) {
+        if (!amount || !totalPrice || +amount <= 0 || +totalPrice <= 0) {
             setError('Please enter a valid amount and price.');
             return;
         }
@@ -1481,55 +1616,109 @@ const ListTokenModal = ({ isOpen, onClose, token, project, onConfirmList, curren
             setError(`You cannot list more than your token balance of ${token.amount}.`);
             return;
         }
+        setStep('confirm');
+    };
 
+    const handleFinalConfirm = () => {
         const listingDetails = {
             tokenId: token.tokenId,
             sellerId: currentUser.id,
             projectId: token.projectId,
             amount: +amount,
-            price: +price,
+            price: +totalPrice,
         };
         onConfirmList(listingDetails);
-    };
+    }
+
+
+    useEffect(() => {
+        if (!isOpen) {
+            setTimeout(() => {
+                setAmount('');
+                setTotalPrice('');
+                setPricePerToken('');
+                setError('');
+                setActiveInput('total');
+                setStep('input');
+            }, 300); // Delay reset to avoid flicker on close
+        }
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
+    const fee = parseFloat(totalPrice) * 0.015;
+    const netProceeds = parseFloat(totalPrice) - fee;
+
     return (
          <WalletModal isOpen={isOpen} onClose={onClose} title={`List Token for ${project.title} (${project.tokenTicker})`}>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {step === 'input' && (
+                <form onSubmit={handleSubmit} className="space-y-4">
+                     <div>
+                        <p className="text-sm"><strong>Token Balance:</strong> {token.amount.toLocaleString()}</p>
+                     </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700">Amount to Sell</label>
+                        <input 
+                            type="number"
+                            value={amount}
+                            onChange={(e) => handleAmountChange(e.target.value)}
+                            placeholder="e.g., 1000"
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Price / Token (USD)</label>
+                            <input 
+                                type="number" 
+                                step="0.0001"
+                                value={pricePerToken}
+                                onChange={(e) => handlePricePerTokenChange(e.target.value)}
+                                onFocus={() => setActiveInput('perToken')}
+                                placeholder="e.g., 1.10"
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                            />
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700">Total Price (USD)</label>
+                            <input 
+                                type="number" 
+                                step="0.01"
+                                value={totalPrice}
+                                onChange={(e) => handleTotalPriceChange(e.target.value)}
+                                onFocus={() => setActiveInput('total')}
+                                placeholder="e.g., 1100"
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                            />
+                        </div>
+                    </div>
+                     {error && <p className="text-red-500 text-sm">{error}</p>}
+                    <div className="text-xs text-gray-500">
+                        <p>A 1.5% transaction fee will be deducted upon sale.</p>
+                    </div>
+                     <div className="flex justify-end space-x-2 pt-2">
+                        <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">Cancel</button>
+                        <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Confirm Listing</button>
+                    </div>
+                </form>
+            )}
+
+            {step === 'confirm' && (
                  <div>
-                    <p className="text-sm"><strong>Token Balance:</strong> {token.amount}</p>
-                 </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Amount to Sell</label>
-                    <input 
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder="e.g., 1000"
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                    />
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">Confirm Listing Details</h3>
+                    <p className="text-gray-600 mb-4">Please review and confirm the details of your token listing.</p>
+                    <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm border">
+                        <div className="flex justify-between"><span className="text-gray-600">Amount to List:</span><span className="font-bold">{parseInt(amount).toLocaleString()} {project.tokenTicker}</span></div>
+                        <div className="flex justify-between"><span className="text-gray-600">Asking Price:</span><span className="font-medium">{formatCurrency(parseFloat(totalPrice))}</span></div>
+                        <div className="flex justify-between text-red-600"><span className="text-gray-600">Platform Fee (1.5%):</span><span className="font-medium">-{formatCurrency(fee)}</span></div>
+                        <div className="flex justify-between border-t mt-2 pt-2"><span className="font-bold">Net Proceeds on Sale:</span><span className="font-bold text-green-600">{formatCurrency(netProceeds)}</span></div>
+                    </div>
+                    <div className="mt-6 flex justify-end space-x-3">
+                        <button onClick={() => setStep('input')} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">Back</button>
+                        <button onClick={handleFinalConfirm} className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">Confirm & List Token</button>
+                    </div>
                 </div>
-                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Set Price (USD)</label>
-                    <input 
-                        type="number" 
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value)}
-                        placeholder="e.g., 1100"
-                        className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                    />
-                     <p className="text-xs text-gray-500 mt-1">Total asking price for the amount you are selling.</p>
-                </div>
-                 {error && <p className="text-red-500 text-sm">{error}</p>}
-                <div className="text-xs text-gray-500">
-                    <p>A 1.5% transaction fee will be deducted upon sale.</p>
-                </div>
-                 <div className="flex justify-end space-x-2 pt-2">
-                    <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">Cancel</button>
-                    <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Confirm Listing</button>
-                </div>
-            </form>
+            )}
         </WalletModal>
     );
 };
@@ -1909,7 +2098,8 @@ const SecondaryMarket = ({ currentUser, marketListings, projects }) => {
                         <tr>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tokens For Sale</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price (USD)</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price / Token</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Price (USD)</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Seller</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                         </tr>
@@ -1919,10 +2109,12 @@ const SecondaryMarket = ({ currentUser, marketListings, projects }) => {
                             const project = projects.find(p => p.id === listing.projectId);
                             // Mock finding seller name
                              const sellerName = Object.values(initialUsers).find(u => u.id === listing.sellerId)?.name || 'Unknown';
+                             const pricePerToken = listing.amount > 0 ? listing.price / listing.amount : 0;
                              return (
                                  <tr key={listing.listingId}>
                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{project?.title} ({project?.tokenTicker})</td>
                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{listing.amount.toLocaleString()}</td>
+                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">{formatCurrency(pricePerToken)}</td>
                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">{formatCurrency(listing.price)}</td>
                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sellerName}</td>
                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -1974,13 +2166,30 @@ const PropertiesMarket = ({ projects, currentUser, onInvest }) => {
 const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
     const [mainImage, setMainImage] = useState(project.images[0]);
     const [investmentAmount, setInvestmentAmount] = useState('');
+    const [isInvestmentModalOpen, setInvestmentModalOpen] = useState(false);
     
-    const numericInvestmentAmount = parseFloat(investmentAmount) || 0;
+    const numericInvestmentAmount = parseFloat(investmentAmount.replace(/,/g, '')) || 0;
     const pricePerToken = project.fundingGoal > 0 && project.tokenSupply > 0 ? project.fundingGoal / project.tokenSupply : 1;
     const tokensToReceive = numericInvestmentAmount > 0 ? numericInvestmentAmount / pricePerToken : 0;
     const fee = numericInvestmentAmount * 0.015;
     const totalDebit = numericInvestmentAmount + fee;
     const progress = (project.amountRaised / project.fundingGoal) * 100;
+
+    const isDeveloperOwner = currentUser && currentUser.type === 'developer' && currentUser.id === project.developerId;
+
+    const handleAmountChange = (e) => {
+        const value = e.target.value;
+        const numericString = value.replace(/[^0-9]/g, '');
+        if (numericString) {
+            setInvestmentAmount(parseInt(numericString, 10).toLocaleString('en-US'));
+        } else {
+            setInvestmentAmount('');
+        }
+    };
+
+    const handleConfirmInvest = () => {
+        onInvest(project.id, numericInvestmentAmount);
+    };
 
     return (
         <div>
@@ -2033,10 +2242,10 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
                                  <h3 className="font-bold text-lg text-gray-800">Invest in this Project</h3>
                                  <div className="mt-4">
                                     <input 
-                                        type="number"
+                                        type="text"
                                         placeholder="Enter amount (USD)" 
                                         value={investmentAmount}
-                                        onChange={(e) => setInvestmentAmount(e.target.value)}
+                                        onChange={handleAmountChange}
                                         className="w-full border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"/>
                                  </div>
                                 {investmentAmount > 0 && (
@@ -2060,13 +2269,109 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
                                     </div>
                                 )}
                                  <div className="mt-4">
-                                     <button onClick={() => onInvest(project.id, parseFloat(investmentAmount))} className="w-full bg-indigo-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-indigo-700 transition-colors">
-                                        Invest Now
+                                     <button 
+                                        onClick={() => setInvestmentModalOpen(true)} 
+                                        className="w-full bg-indigo-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                        disabled={isDeveloperOwner || !investmentAmount || investmentAmount <= 0}
+                                     >
+                                        {isDeveloperOwner ? "Cannot invest in your own project" : "Invest Now"}
                                      </button>
                                  </div>
                              </div>
                          </div>
                     </div>
+                </div>
+            </div>
+             <InvestmentModal 
+                isOpen={isInvestmentModalOpen}
+                onClose={() => setInvestmentModalOpen(false)}
+                onConfirm={handleConfirmInvest}
+                project={project}
+                details={{ numericInvestmentAmount, fee, totalDebit, tokensToReceive }}
+            />
+        </div>
+    );
+};
+
+const InvestmentModal = ({ isOpen, onClose, onConfirm, project, details }) => {
+    const [status, setStatus] = useState('confirm'); // confirm, processing, success, error
+
+    const handleConfirm = () => {
+        setStatus('processing');
+        // Simulate network request
+        setTimeout(() => {
+            try {
+                onConfirm();
+                setStatus('success');
+            } catch (e) {
+                setStatus('error');
+            }
+        }, 2000);
+    };
+
+    const handleClose = () => {
+        onClose();
+        // Reset status for next time modal opens
+        setTimeout(() => setStatus('confirm'), 300);
+    };
+
+    if (!isOpen) return null;
+
+    const renderContent = () => {
+        switch (status) {
+            case 'processing':
+                return (
+                    <div className="text-center py-8">
+                        <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto mb-4"></div>
+                        <h4 className="font-semibold text-lg text-gray-800">Processing Transaction</h4>
+                        <p className="text-gray-600">Please wait while we confirm your investment on the blockchain...</p>
+                    </div>
+                );
+            case 'success':
+                return (
+                     <div className="text-center py-8">
+                        <CheckCircleIcon className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                        <h4 className="font-semibold text-lg text-gray-800">Investment Successful!</h4>
+                        <p className="text-gray-600">Congratulations! You are now a fractional owner of {project.title}.</p>
+                        <button onClick={handleClose} className="mt-6 bg-indigo-600 text-white px-5 py-2 rounded-md hover:bg-indigo-700">View My Tokens</button>
+                    </div>
+                );
+            case 'error':
+                 return (
+                     <div className="text-center py-8">
+                        <XIcon className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                        <h4 className="font-semibold text-lg text-red-600">Investment Failed</h4>
+                        <p className="text-gray-600">Something went wrong. Please try again.</p>
+                        <button onClick={handleClose} className="mt-6 bg-gray-200 text-gray-800 px-5 py-2 rounded-md hover:bg-gray-300">Close</button>
+                    </div>
+                );
+            case 'confirm':
+            default:
+                return (
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-900 mb-2">Confirm Your Investment</h3>
+                        <p className="text-gray-600 mb-4">You are about to invest in <strong>{project.title}</strong>. Please review the details below.</p>
+                        <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-sm border">
+                            <div className="flex justify-between"><span className="text-gray-600">Investment Amount:</span><span className="font-medium">{formatCurrency(details.numericInvestmentAmount)}</span></div>
+                            <div className="flex justify-between"><span className="text-gray-600">Platform Fee (1.5%):</span><span className="font-medium">{formatCurrency(details.fee)}</span></div>
+                            <div className="flex justify-between border-t mt-2 pt-2"><span className="font-bold">Total Debit:</span><span className="font-bold">{formatCurrency(details.totalDebit)}</span></div>
+                            <hr className="my-2"/>
+                            <div className="flex justify-between"><span className="text-gray-600">Tokens to Receive:</span><span className="font-bold text-indigo-600">{details.tokensToReceive.toLocaleString(undefined, { maximumFractionDigits: 2 })} {project.tokenTicker}</span></div>
+                        </div>
+                        <div className="mt-6 flex justify-end space-x-3">
+                            <button onClick={handleClose} className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300">Cancel</button>
+                            <button onClick={handleConfirm} className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Confirm Investment</button>
+                        </div>
+                    </div>
+                );
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+                <div className="p-6">
+                    {renderContent()}
                 </div>
             </div>
         </div>
@@ -2076,149 +2381,90 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
 
 const CurrencyExchange = () => {
     const USD_NGN_RATE = 1500;
+    const [ngnAmount, setNgnAmount] = useState('150,000');
+    const [cryptoAmount, setCryptoAmount] = useState('100.00');
+    const [selectedCrypto, setSelectedCrypto] = useState('USDT');
+    const [activeField, setActiveField] = useState('NGN'); // 'NGN' or 'CRYPTO'
 
-    const [fieldA, setFieldA] = useState({ currency: 'NGN', amount: '150,000' });
-    const [fieldB, setFieldB] = useState({ currency: 'USD', amount: '100.00' });
-    const [activeField, setActiveField] = useState('A'); // Determines which field drives the calculation
-
-    const formatValue = (num, currency) => {
-        if (isNaN(num) || num === null) return '';
-        if (currency === 'NGN') return num.toLocaleString('en-US', { maximumFractionDigits: 0 });
-        return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    };
-
-    // Effect to calculate B when A changes
+    // Recalculate crypto when NGN changes
     useEffect(() => {
-        if (activeField !== 'A') return;
-        const numericAmount = parseFloat(fieldA.amount.replace(/,/g, '')) || 0;
-        let converted;
-        if (fieldA.currency === 'NGN' && fieldB.currency === 'USD') converted = numericAmount / USD_NGN_RATE;
-        else if (fieldA.currency === 'USD' && fieldB.currency === 'NGN') converted = numericAmount * USD_NGN_RATE;
-        else converted = numericAmount;
-        
-        setFieldB(prev => ({ ...prev, amount: formatValue(converted, prev.currency) }));
-    }, [fieldA.amount, fieldA.currency, fieldB.currency, activeField]);
+        if (activeField === 'NGN') {
+            const numericNgn = parseFloat(ngnAmount.replace(/,/g, '')) || 0;
+            if (numericNgn > 0) {
+                setCryptoAmount((numericNgn / USD_NGN_RATE).toFixed(2));
+            } else {
+                setCryptoAmount('0.00');
+            }
+        }
+    }, [ngnAmount, activeField]);
 
-    // Effect to calculate A when B changes
+    // Recalculate NGN when crypto changes
     useEffect(() => {
-        if (activeField !== 'B') return;
-        const numericAmount = parseFloat(fieldB.amount.replace(/,/g, '')) || 0;
-        let converted;
-        if (fieldB.currency === 'NGN' && fieldA.currency === 'USD') converted = numericAmount / USD_NGN_RATE;
-        else if (fieldB.currency === 'USD' && fieldA.currency === 'NGN') converted = numericAmount * USD_NGN_RATE;
-        else converted = numericAmount;
-
-        setFieldA(prev => ({ ...prev, amount: formatValue(converted, prev.currency) }));
-    }, [fieldB.amount, fieldB.currency, fieldA.currency, activeField]);
-
-    const handleAmountChange = (field, value) => {
-        // Allow only numbers and a single decimal point for USD
-        const currency = field === 'A' ? fieldA.currency : fieldB.currency;
-        let sanitizedValue = value.replace(/,/g, '');
-
-        if (currency === 'USD') {
-             sanitizedValue = sanitizedValue.replace(/[^0-9.]/g, '');
-             const parts = sanitizedValue.split('.');
-             if (parts.length > 2) { // More than one decimal point
-                 sanitizedValue = parts[0] + '.' + parts.slice(1).join('');
-             }
-        } else { // NGN
-            sanitizedValue = sanitizedValue.replace(/[^0-9]/g, '');
-        }
-
-        const numericValue = parseFloat(sanitizedValue);
-        const formattedValue = isNaN(numericValue) ? '' : (currency === 'NGN' ? parseInt(sanitizedValue, 10).toLocaleString('en-US') : sanitizedValue);
-
-        if (field === 'A') {
-            setActiveField('A');
-            setFieldA(prev => ({ ...prev, amount: formattedValue }));
-        } else { // field B
-            setActiveField('B');
-            setFieldB(prev => ({ ...prev, amount: formattedValue }));
-        }
-    };
-
-    const handleCurrencyChange = (field, currency) => {
-        if (field === 'A') {
-            const otherCurrency = fieldB.currency;
-            setFieldA(prev => ({ ...prev, currency }));
-            if (currency === otherCurrency) {
-                setFieldB(prev => ({ ...prev, currency: currency === 'USD' ? 'NGN' : 'USD' }));
+        if (activeField === 'CRYPTO') {
+            const numericCrypto = parseFloat(cryptoAmount) || 0;
+            if (numericCrypto > 0) {
+                const newNgn = numericCrypto * USD_NGN_RATE;
+                setNgnAmount(newNgn.toLocaleString('en-US', { maximumFractionDigits: 0 }));
+            } else {
+                setNgnAmount('0');
             }
-            setActiveField('A');
-        } else { // field B
-            const otherCurrency = fieldA.currency;
-            setFieldB(prev => ({ ...prev, currency }));
-            if (currency === otherCurrency) {
-                setFieldA(prev => ({ ...prev, currency: currency === 'USD' ? 'NGN' : 'USD' }));
-            }
-            setActiveField('B');
         }
+    }, [cryptoAmount, selectedCrypto, activeField]);
+
+    const handleNgnChange = (e) => {
+        setActiveField('NGN');
+        const value = e.target.value;
+        const numericString = value.replace(/[^0-9]/g, '');
+        setNgnAmount(numericString ? parseInt(numericString, 10).toLocaleString('en-US') : '');
     };
 
-    const handleSwap = () => {
-        const tempFieldA = { ...fieldA };
-        setFieldA({ ...fieldB });
-        setFieldB({ ...tempFieldA });
-        setActiveField('A'); // Always recalculate from top field after swap
+    const handleCryptoChange = (e) => {
+        setActiveField('CRYPTO');
+        let value = e.target.value.replace(/[^0-9.]/g, '');
+        const parts = value.split('.');
+        if (parts.length > 2) {
+            value = parts[0] + '.' + parts.slice(1).join('');
+        }
+        setCryptoAmount(value);
     };
-
-    const ExchangeInput = ({ field, value, onAmountChange, onCurrencyChange, onFocus, label }) => (
-        <div className="p-4 border rounded-lg">
-            <div className="flex justify-between items-center mb-2">
-                <label className="text-sm font-medium text-gray-500">{label}</label>
-                <span className="text-sm text-gray-500">Balance: ...</span>
-            </div>
-            <div className="flex items-center">
-                <input
-                    type="text"
-                    value={value.amount}
-                    onChange={(e) => onAmountChange(field, e.target.value)}
-                    onFocus={() => onFocus(field)}
-                    placeholder="0"
-                    className="w-full text-3xl font-bold border-0 p-0 focus:ring-0 bg-transparent"
-                />
-                <select value={value.currency} onChange={(e) => onCurrencyChange(field, e.target.value)} className="text-xl font-semibold border-0 focus:ring-0 bg-gray-100 rounded-md p-2">
-                    <option>NGN</option>
-                    <option>USD</option>
-                </select>
-            </div>
-        </div>
-    );
 
     return (
         <div className="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Fiat Exchange</h2>
-            <div className="space-y-2">
-                <ExchangeInput
-                    field="A"
-                    value={fieldA}
-                    onAmountChange={handleAmountChange}
-                    onCurrencyChange={handleCurrencyChange}
-                    onFocus={setActiveField}
-                    label="You Pay"
-                />
-
-                <div className="flex justify-center py-2">
-                    <button onClick={handleSwap} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-indigo-600 transition-colors">
-                        <RepeatIcon className="w-6 h-6" />
-                    </button>
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Exchange NGN & Crypto</h2>
+            <div className="space-y-4">
+                <div className="p-4 border rounded-lg">
+                     <label className="text-sm font-medium text-gray-500">NGN</label>
+                    <input 
+                        type="text" 
+                        value={ngnAmount}
+                        onChange={handleNgnChange}
+                        onFocus={() => setActiveField('NGN')}
+                        className="w-full text-3xl font-bold border-0 p-0 focus:ring-0 bg-transparent"
+                    />
                 </div>
-                
-                <ExchangeInput
-                    field="B"
-                    value={fieldB}
-                    onAmountChange={handleAmountChange}
-                    onCurrencyChange={handleCurrencyChange}
-                    onFocus={setActiveField}
-                    label="You Receive"
-                />
-
-                <div className="pt-4 text-sm text-gray-600 text-center">
-                    <p>Exchange Rate: 1 USD ≈ {USD_NGN_RATE.toLocaleString()} NGN</p>
+                <div className="flex justify-center py-0">
+                    <RepeatIcon className="w-8 h-8 text-gray-400"/>
+                </div>
+                <div className="p-4 border rounded-lg">
+                    <label className="text-sm font-medium text-gray-500">Crypto</label>
+                     <div className="flex items-center">
+                        <input 
+                            type="text" 
+                            value={cryptoAmount} 
+                            onChange={handleCryptoChange}
+                            onFocus={() => setActiveField('CRYPTO')}
+                            className="w-full text-3xl font-bold border-0 p-0 focus:ring-0 bg-transparent" 
+                        />
+                        <select value={selectedCrypto} onChange={(e) => setSelectedCrypto(e.target.value)} className="text-xl font-semibold border-0 focus:ring-0 bg-gray-100 rounded-md p-2">
+                            <option>USDT</option>
+                            <option>USDC</option>
+                        </select>
+                    </div>
+                </div>
+                <div className="pt-2 text-sm text-gray-600 text-center">
+                    <p>Exchange Rate: 1 {selectedCrypto} ≈ {USD_NGN_RATE.toLocaleString()} NGN</p>
                     <p>Fee: 0.5%</p>
                 </div>
-
                 <div className="pt-2">
                     <button
                         onClick={() => alert('Currency swap initiated!')}
@@ -2234,7 +2480,7 @@ const CurrencyExchange = () => {
 
 
 // --- DEVELOPER DASHBOARD --- //
-const DeveloperDashboard = ({ currentUser, projects, portfolios, marketListings, onLogout }) => {
+const DeveloperDashboard = ({ currentUser, projects, portfolios, marketListings, onLogout, totalBalance }) => {
     const [activeItem, setActiveItem] = useState('Dashboard');
     const [managingProjectId, setManagingProjectId] = useState(null);
 
@@ -2274,7 +2520,7 @@ const DeveloperDashboard = ({ currentUser, projects, portfolios, marketListings,
     }, [activeItem]);
 
     return (
-        <DashboardLayout currentUser={currentUser} sidebarItems={sidebarItems} activeItem={activeItem} setActiveItem={setActiveItem} onLogout={onLogout}>
+        <DashboardLayout currentUser={currentUser} sidebarItems={sidebarItems} activeItem={activeItem} setActiveItem={setActiveItem} onLogout={onLogout} totalBalance={totalBalance}>
             {renderContent()}
         </DashboardLayout>
     );
@@ -2872,7 +3118,7 @@ const DeveloperCreateProject = () => {
 
 // --- ADMIN DASHBOARD --- //
 
-const AdminDashboardOverview = ({ users, projects }) => {
+const AdminDashboardOverview = ({ users, projects, onSelectProject }) => {
     const stats = useMemo(() => {
         const totalUsers = Object.keys(users).length;
         const investorCount = Object.values(users).filter(u => u.type === 'investor').length;
@@ -2882,8 +3128,19 @@ const AdminDashboardOverview = ({ users, projects }) => {
         const pendingProjects = projects.filter(p => p.status === 'pending').length;
         const activeProjects = projects.filter(p => p.status === 'active').length;
         const fundedProjects = projects.filter(p => p.status === 'funded').length;
-
         const totalValueLocked = projects.reduce((sum, p) => sum + p.amountRaised, 0);
+
+        // Fee Calculations
+        const totalInvestments = Object.values(initialPortfolios)
+            .flatMap(p => p.tokens)
+            .filter(t => t.type === 'SECURITY')
+            .reduce((sum, t) => sum + t.amount, 0);
+
+        const developerFees = projects.reduce((sum, p) => sum + (p.amountRaised * 0.03), 0);
+        const investorFees = totalInvestments * 0.015;
+        const marketFees = initialMarketListings.reduce((sum, l) => sum + (l.price * 0.015), 0);
+        const totalFeesCollected = developerFees + investorFees + marketFees;
+        const treasuryBalance = totalFeesCollected + 50000; // Starting with a base balance
 
         return {
             totalUsers,
@@ -2894,6 +3151,11 @@ const AdminDashboardOverview = ({ users, projects }) => {
             activeProjects,
             fundedProjects,
             totalValueLocked,
+            developerFees,
+            investorFees,
+            marketFees,
+            totalFeesCollected,
+            treasuryBalance,
         };
     }, [users, projects]);
 
@@ -2906,46 +3168,156 @@ const AdminDashboardOverview = ({ users, projects }) => {
                 <StatCard title="Pending Projects" value={stats.pendingProjects} icon={<ClockIcon className="w-6 h-6" />} />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* User Breakdown */}
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">User Breakdown</h3>
-                     <div className="space-y-4">
-                        <div className="flex items-center">
-                            <span className="flex-1 text-gray-700">Investors</span>
-                            <span className="font-bold">{stats.investorCount}</span>
-                        </div>
-                        <div className="flex items-center">
-                            <span className="flex-1 text-gray-700">Developers</span>
-                            <span className="font-bold">{stats.developerCount}</span>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                 <div className="lg:col-span-1 space-y-8">
+                    {/* User Breakdown */}
+                    <div className="bg-white p-6 rounded-lg shadow-md">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4">User Breakdown</h3>
+                         <div className="space-y-4">
+                            <div className="flex items-center">
+                                <span className="flex-1 text-gray-700">Investors</span>
+                                <span className="font-bold">{stats.investorCount}</span>
+                            </div>
+                            <div className="flex items-center">
+                                <span className="flex-1 text-gray-700">Developers</span>
+                                <span className="font-bold">{stats.developerCount}</span>
+                            </div>
                         </div>
                     </div>
+                    {/* Project Status */}
+                     <div className="bg-white p-6 rounded-lg shadow-md">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4">Project Status</h3>
+                        <div className="space-y-4">
+                            <div className="flex items-center">
+                                <span className="h-3 w-3 rounded-full bg-yellow-400 mr-3"></span>
+                                <span className="flex-1 text-gray-700">Pending</span>
+                                <span className="font-bold">{stats.pendingProjects}</span>
+                            </div>
+                            <div className="flex items-center">
+                                <span className="h-3 w-3 rounded-full bg-green-500 mr-3"></span>
+                                <span className="flex-1 text-gray-700">Active</span>
+                                <span className="font-bold">{stats.activeProjects}</span>
+                            </div>
+                             <div className="flex items-center">
+                                <span className="h-3 w-3 rounded-full bg-blue-500 mr-3"></span>
+                                <span className="flex-1 text-gray-700">Funded</span>
+                                <span className="font-bold">{stats.fundedProjects}</span>
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+
+                <div className="lg:col-span-1">
+                    <AdminTreasuryCard stats={stats} />
                 </div>
-                {/* Project Status */}
-                 <div className="bg-white p-6 rounded-lg shadow-md">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">Project Status</h3>
-                    <div className="space-y-4">
-                        <div className="flex items-center">
-                            <span className="h-3 w-3 rounded-full bg-yellow-400 mr-3"></span>
-                            <span className="flex-1 text-gray-700">Pending</span>
-                            <span className="font-bold">{stats.pendingProjects}</span>
-                        </div>
-                        <div className="flex items-center">
-                            <span className="h-3 w-3 rounded-full bg-green-500 mr-3"></span>
-                            <span className="flex-1 text-gray-700">Active</span>
-                            <span className="font-bold">{stats.activeProjects}</span>
-                        </div>
-                         <div className="flex items-center">
-                            <span className="h-3 w-3 rounded-full bg-blue-500 mr-3"></span>
-                            <span className="flex-1 text-gray-700">Funded</span>
-                            <span className="font-bold">{stats.fundedProjects}</span>
-                        </div>
+                
+                <div className="lg:col-span-1">
+                    <AdminLiveFundingMonitor allProjects={projects} onSelectProject={onSelectProject} />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const AdminTreasuryCard = ({ stats }) => {
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md h-full">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Platform Treasury & Fees</h3>
+            <div className="bg-indigo-50 p-4 rounded-lg text-center mb-4 border border-indigo-200">
+                <p className="text-sm text-indigo-800 font-semibold">Current Treasury Balance</p>
+                <p className="text-3xl font-bold text-indigo-900">{formatCurrency(stats.treasuryBalance)}</p>
+            </div>
+            <div>
+                <h4 className="font-semibold text-gray-700 mb-2">Total Fees Collected Breakdown</h4>
+                <div className="space-y-2 text-sm">
+                    <div className="flex justify-between p-2 bg-gray-50 rounded">
+                        <span className="text-gray-600">Developer Platform Fees (3%)</span>
+                        <span className="font-medium text-gray-800">{formatCurrency(stats.developerFees)}</span>
+                    </div>
+                    <div className="flex justify-between p-2 bg-gray-50 rounded">
+                        <span className="text-gray-600">Investor Investment Fees (1.5%)</span>
+                        <span className="font-medium text-gray-800">{formatCurrency(stats.investorFees)}</span>
+                    </div>
+                    <div className="flex justify-between p-2 bg-gray-50 rounded">
+                        <span className="text-gray-600">Secondary Market Fees (1.5%)</span>
+                        <span className="font-medium text-gray-800">{formatCurrency(stats.marketFees)}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2 mt-2 font-bold p-2">
+                        <span className="text-gray-900">Total Fees</span>
+                        <span className="text-gray-900">{formatCurrency(stats.totalFeesCollected)}</span>
                     </div>
                 </div>
             </div>
         </div>
     );
 };
+
+const AdminLiveFundingMonitor = ({ allProjects, onSelectProject }) => {
+    const [liveProjects, setLiveProjects] = useState(allProjects);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setLiveProjects(currentProjects => {
+                const activeProjects = currentProjects.filter(p => p.status === 'active' && p.amountRaised < p.fundingGoal);
+                if (activeProjects.length === 0) return currentProjects;
+
+                // Pick a random project to update
+                const projectToUpdate = activeProjects[Math.floor(Math.random() * activeProjects.length)];
+                const newInvestment = Math.floor(Math.random() * (2000 - 100 + 1)) + 100;
+
+                return currentProjects.map(p => {
+                    if (p.id === projectToUpdate.id) {
+                        const newAmountRaised = Math.min(p.amountRaised + newInvestment, p.fundingGoal);
+                        const newStatus = newAmountRaised >= p.fundingGoal ? 'funded' : p.status;
+                        return { ...p, amountRaised: newAmountRaised, status: newStatus };
+                    }
+                    return p;
+                });
+            });
+        }, 2500); // Update every 2.5 seconds
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const activeFundingProjects = liveProjects.filter(p => p.status === 'active' && p.amountRaised < p.fundingGoal);
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+            <div className="flex items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-800">Platform Live Funding Monitor</h3>
+                {activeFundingProjects.length > 0 && (
+                    <span className="flex items-center ml-3 text-sm font-medium text-green-600">
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500 mr-2"></span>
+                        Active
+                    </span>
+                )}
+            </div>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+                {activeFundingProjects.length > 0 ? activeFundingProjects.map(project => {
+                    const progress = project.fundingGoal > 0 ? (project.amountRaised / project.fundingGoal) * 100 : 0;
+                    return (
+                        <div key={project.id} className="p-3 bg-gray-50 rounded-lg">
+                            <div className="flex justify-between items-center mb-1 text-sm">
+                                <span className="font-semibold text-gray-800">{project.title}</span>
+                                <span className="text-gray-500">{project.developerName}</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                <div
+                                    className="bg-green-500 h-2.5 rounded-full transition-all duration-500 ease-out"
+                                    style={{ width: `${progress}%` }}
+                                ></div>
+                            </div>
+                             <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                <span>{formatCurrency(project.amountRaised)}</span>
+                                <span>{progress.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    );
+                }) : <p className="text-gray-500 text-center py-12">No projects are actively fundraising at the moment.</p>}
+            </div>
+        </div>
+    );
+}
 
 const AdminCompliance = ({ users }) => {
     const pendingKycUsers = useMemo(() => {
@@ -3149,7 +3521,7 @@ const AdminSettings = () => {
     );
 };
 
-const AdminDashboard = ({ currentUser, projects, users, onLogout }) => {
+const AdminDashboard = ({ currentUser, projects, users, onLogout, totalBalance }) => {
      const [activeItem, setActiveItem] = useState('Dashboard');
 
     const sidebarItems = [
@@ -3172,7 +3544,7 @@ const AdminDashboard = ({ currentUser, projects, users, onLogout }) => {
     };
     
     return (
-         <DashboardLayout currentUser={currentUser} sidebarItems={sidebarItems} activeItem={activeItem} setActiveItem={setActiveItem} onLogout={onLogout}>
+         <DashboardLayout currentUser={currentUser} sidebarItems={sidebarItems} activeItem={activeItem} setActiveItem={setActiveItem} onLogout={onLogout} totalBalance={totalBalance}>
             {renderContent()}
         </DashboardLayout>
     );
@@ -3258,6 +3630,31 @@ export default function App() {
     const [portfolios, setPortfolios] = useState(initialPortfolios);
     const [marketListings, setMarketListings] = useState(initialMarketListings);
 
+    const USD_NGN_RATE = 1500;
+
+    const totalBalance = useMemo(() => {
+        if (!currentUser || !currentUser.wallet) {
+            return 0;
+        }
+
+        // 1. Portfolio Value for Investors
+        let portfolioValue = 0;
+        if (currentUser.type === 'investor') {
+            const userPortfolio = portfolios[currentUser.id] || { tokens: [] };
+            portfolioValue = userPortfolio.tokens
+                .filter(t => t.type === 'SECURITY')
+                .reduce((sum, token) => sum + token.amount, 0);
+        }
+
+        // 2. Wallet Value (Crypto + Fiat)
+        const { ngn, usdt, usdc } = currentUser.wallet;
+        const ngnInUsd = ngn / USD_NGN_RATE;
+        const walletValue = usdt + usdc + ngnInUsd;
+
+        return portfolioValue + walletValue;
+    }, [currentUser, portfolios]);
+
+
     const handleLogout = () => {
         setCurrentUser(null);
         setPage('landing');
@@ -3329,18 +3726,38 @@ export default function App() {
 
         const fee = amount * 0.015;
         const totalDebit = amount + fee;
+        const userWallet = users[currentUser.email].wallet;
+        const totalStablecoin = userWallet.usdt + userWallet.usdc;
 
-        if (!currentUser || currentUser.wallet.usd < totalDebit) {
-            alert("Insufficient funds or not logged in.");
+        if (!currentUser || totalStablecoin < totalDebit) {
+            alert("Insufficient stablecoin balance (USDT/USDC) for this investment.");
             return;
+        }
+
+        let remainingDebit = totalDebit;
+        let newUsdt = userWallet.usdt;
+        let newUsdc = userWallet.usdc;
+
+        if (newUsdt >= remainingDebit) {
+            newUsdt -= remainingDebit;
+            remainingDebit = 0;
+        } else {
+            remainingDebit -= newUsdt;
+            newUsdt = 0;
+        }
+
+        if (remainingDebit > 0 && newUsdc >= remainingDebit) {
+            newUsdc -= remainingDebit;
+            remainingDebit = 0;
         }
 
         // 1. Debit investor's wallet
         const updatedUser = {
             ...users[currentUser.email],
             wallet: {
-                ...users[currentUser.email].wallet,
-                usd: users[currentUser.email].wallet.usd - totalDebit
+                ...userWallet,
+                usdt: newUsdt,
+                usdc: newUsdc
             }
         };
 
@@ -3381,15 +3798,15 @@ export default function App() {
             newPortfolios[currentUser.id] = userPortfolio;
             return newPortfolios;
         });
-        alert(`Congratulations! Your investment of ${formatCurrency(amount)} was successful.`);
+        // alert(`Congratulations! Your investment of ${formatCurrency(amount)} was successful.`);
     };
 
     const renderPage = () => {
         if (currentUser) {
             switch (currentUser.type) {
-                case 'investor': return <InvestorDashboard currentUser={currentUser} projects={projects} portfolios={portfolios} marketListings={marketListings} onLogout={handleLogout} onClaimApy={handleClaimApy} onListToken={handleListToken} onInvest={handleInvest} />;
-                case 'developer': return <DeveloperDashboard currentUser={currentUser} projects={projects} portfolios={portfolios} marketListings={marketListings} onLogout={handleLogout} />;
-                case 'admin': return <AdminDashboard currentUser={currentUser} projects={projects} users={users} onLogout={handleLogout} />;
+                case 'investor': return <InvestorDashboard currentUser={currentUser} projects={projects} portfolios={portfolios} marketListings={marketListings} onLogout={handleLogout} onClaimApy={handleClaimApy} onListToken={handleListToken} onInvest={handleInvest} totalBalance={totalBalance} />;
+                case 'developer': return <DeveloperDashboard currentUser={currentUser} projects={projects} portfolios={portfolios} marketListings={marketListings} onLogout={handleLogout} totalBalance={totalBalance} />;
+                case 'admin': return <AdminDashboard currentUser={currentUser} projects={projects} users={users} onLogout={handleLogout} totalBalance={totalBalance} />;
                 default:
                     // If user type is unknown, log them out.
                     setCurrentUser(null);
@@ -3419,10 +3836,6 @@ export default function App() {
         </div>
     );
 }
-
-
-
-
 
 
 
