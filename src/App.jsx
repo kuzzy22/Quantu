@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+ import React, { useState, useEffect, useMemo } from 'react';
 
 // --- MOCK DATA --- //
 // In a real application, this data would come from a secure backend and blockchain.
@@ -140,6 +140,19 @@ const initialMarketListings = [
 
 
 // --- SVG ICONS AS REACT COMPONENTS --- //
+const KayzeraLogo = (props) => (
+  <svg {...props} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style={{stopColor: '#6366f1', stopOpacity: 1}} />
+        <stop offset="100%" style={{stopColor: '#4f46e5', stopOpacity: 1}} />
+      </linearGradient>
+    </defs>
+    <path d="M4 4H8V20H4V4Z" fill="url(#logoGradient)" />
+    <path d="M9 11L16 4L20 8L13 15V20H9V11Z" fill="url(#logoGradient)" />
+  </svg>
+);
+
 const BuildingIcon = (props) => (
   <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 22h16"/><path d="M2 11h20"/><path d="M3 22V6l8-4 8 4v16"/><path d="M15 22V11l-7-3.5L1 11v11"/><path d="M11 22V11"/><path d="m11 6.5-4 2"/><path d="m19 6.5-4 2"/></svg>
 );
@@ -318,7 +331,7 @@ const Header = ({ page, currentUser, setPage, setCurrentUser }) => {
                 <div className="flex items-center justify-between h-16">
                     <div className="flex items-center">
                         <a href="#" onClick={() => setPage('landing')} className="flex-shrink-0 flex items-center gap-2">
-                           <BuildingIcon className="h-8 w-8 text-indigo-600"/>
+                           <KayzeraLogo className="h-8 w-8"/>
                            <span className="text-2xl font-bold text-gray-800">Kayzera</span>
                         </a>
                     </div>
@@ -327,6 +340,7 @@ const Header = ({ page, currentUser, setPage, setCurrentUser }) => {
                             <a href="#" onClick={() => setPage('landing')} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Home</a>
                             <a href="#" onClick={() => currentUser ? setPage(getDashboardLink()) : setPage('login')} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Projects</a>
                             <a href="#about" onClick={(e) => { e.preventDefault(); handleScrollTo('about'); }} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">About Us</a>
+                            <a href="#faq" onClick={(e) => { e.preventDefault(); handleScrollTo('faq'); }} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">FAQ</a>
                             <a href="#compliance" onClick={(e) => { e.preventDefault(); handleScrollTo('compliance'); }} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Compliance</a>
                         </div>
                     </div>
@@ -384,7 +398,7 @@ const LandingPage = ({ setPage, projects }) => {
                                     Get Started
                                     <ArrowRightIcon className="ml-2 h-5 w-5" />
                                 </button>
-                                <button className="inline-flex items-center justify-center px-6 py-3 border border-indigo-200 text-base font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50">
+                                <button onClick={() => document.getElementById('featured-projects')?.scrollIntoView({ behavior: 'smooth' })} className="inline-flex items-center justify-center px-6 py-3 border border-indigo-200 text-base font-medium rounded-md text-indigo-700 bg-white hover:bg-indigo-50">
                                     View Projects
                                 </button>
                             </div>
@@ -426,7 +440,7 @@ const LandingPage = ({ setPage, projects }) => {
                 </div>
 
                 {/* Featured Projects Section */}
-                <div className="py-16 bg-gray-50">
+                <div id="featured-projects" className="py-16 bg-gray-50">
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="text-center mb-12">
                             <h2 className="text-3xl font-bold text-gray-800">Featured Investment Opportunities</h2>
@@ -449,19 +463,20 @@ const LandingPage = ({ setPage, projects }) => {
                                 Democratizing real estate investment in Nigeria.
                             </p>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+                        <div className="max-w-3xl mx-auto text-center">
                             <div>
                                 <h3 className="text-2xl font-bold text-gray-800 mb-4">Our Mission</h3>
                                 <p className="text-lg text-gray-600 mb-6">
                                     Our mission is to empower Nigerians to build wealth through property ownership, while also providing a vital source of capital for the real estate sector, contributing to the nation's economic growth.
                                 </p>
                                 <h3 className="text-2xl font-bold text-gray-800 mb-4">Our Vision</h3>
-                                <p className="text-lg text-gray-600">
+                                <p className="text-lg text-gray-600 mb-6">
                                     To be the leading and most trusted tokenized real estate crowdfunding platform in Africa, known for our innovation, integrity, and commitment to creating value for our stakeholders.
                                 </p>
-                            </div>
-                            <div>
-                                <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2000" alt="Team collaborating" className="rounded-lg shadow-xl"/>
+                                <h3 className="text-2xl font-bold text-gray-800 mb-4">Our Team</h3>
+                                <p className="text-lg text-gray-600">
+                                    Our team is composed of seasoned professionals with deep expertise in blockchain technology, property development, and legal compliance, ensuring a secure, transparent, and efficient platform for all our users.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -495,6 +510,50 @@ const LandingPage = ({ setPage, projects }) => {
                     </div>
                 </div>
 
+                {/* FAQ Section */}
+                <div id="faq" className="py-16 bg-white">
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-bold text-gray-800">Frequently Asked Questions</h2>
+                            <p className="mt-2 text-lg text-gray-600">
+                                Answers to common questions from our users.
+                            </p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8">
+                            {/* Investor FAQ */}
+                            <div>
+                                <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center md:text-left">For Investors</h3>
+                                <div className="space-y-2">
+                                    <FaqItem question="How do I invest in a project?">
+                                        <p>First, complete your KYC verification in the settings. Once verified, navigate to the "Marketplace" tab, select "Properties," and click on a project you're interested in. On the project details page, you can enter the amount you wish to invest and complete the transaction from your funded wallet.</p>
+                                    </FaqItem>
+                                     <FaqItem question="What is a Security Token?">
+                                        <p>A Security Token represents your direct investment in a property. It is locked for the duration of the project term and entitles you to monthly APY (Annual Percentage Yield) payments, which you can claim from the "My Tokens" page in your dashboard.</p>
+                                    </FaqItem>
+                                     <FaqItem question="What is a Market Token?">
+                                        <p>A Market Token is paired with your Security Token and provides liquidity. You can list this token for sale on our "Secondary Market" at any time, allowing you to exit your position before the project's lockup period ends.</p>
+                                    </FaqItem>
+                                </div>
+                            </div>
+                            {/* Developer FAQ */}
+                             <div>
+                                <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center md:text-left">For Developers</h3>
+                                <div className="space-y-2">
+                                     <FaqItem question="How do I submit a new project for funding?">
+                                        <p>After creating a developer account, navigate to the "Create New Project" tab in your dashboard. You'll be guided through a form to provide project details, financial projections, legal documents, and property images. Our team will review your submission within 5-7 business days.</p>
+                                    </FaqItem>
+                                    <FaqItem question="What are the platform fees for developers?">
+                                        <p>We charge a one-time platform fee of 3% on the total capital raised for your project. This fee is deducted automatically when you withdraw the funds after a successful funding round. There are no upfront costs to list a project.</p>
+                                    </FaqItem>
+                                    <FaqItem question="When can I withdraw the raised capital?">
+                                        <p>You can initiate a withdrawal of the raised funds as soon as your project's funding goal is met. The funds, minus the platform fee, will be securely transferred to your verified company treasury address from the "Manage Project" page.</p>
+                                    </FaqItem>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
              {/* Footer */}
             <footer className="bg-gray-800 text-white">
@@ -503,7 +562,7 @@ const LandingPage = ({ setPage, projects }) => {
                         <div className="md:col-span-12 lg:col-span-4">
                             <div className="space-y-4">
                                 <a href="#" onClick={() => setPage('landing')} className="flex-shrink-0 flex items-center gap-2">
-                                    <BuildingIcon className="h-8 w-8 text-indigo-400"/>
+                                    <KayzeraLogo className="h-8 w-8"/>
                                     <span className="text-2xl font-bold text-white">Kayzera</span>
                                 </a>
                                 <p className="text-gray-400 text-base max-w-xs">Democratizing real estate for everyone by making it accessible, transparent, and liquid.</p>
@@ -563,7 +622,7 @@ const AuthPage = ({ children, title, setPage }) => {
         <div className="bg-gray-100 flex flex-1 flex-col justify-center py-12 sm:px-6 lg:px-8">
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
                 <a href="#" onClick={(e) => { e.preventDefault(); setPage('landing'); }} className="flex justify-center items-center gap-2 no-underline">
-                    <BuildingIcon className="h-12 w-auto text-indigo-600"/>
+                    <KayzeraLogo className="h-10 w-auto"/>
                     <span className="text-3xl font-bold text-gray-800">Kayzera</span>
                 </a>
                 <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">{title}</h2>
@@ -760,7 +819,7 @@ const DashboardLayout = ({ children, sidebarItems, activeItem, setActiveItem, on
                     <div className="flex-grow">
                         <div className="p-6">
                              <div className="flex items-center gap-2">
-                                <BuildingIcon className="h-8 w-8 text-indigo-600" />
+                                <KayzeraLogo className="h-8 w-8" />
                                 <span className="text-xl font-bold text-gray-800">Kayzera</span>
                             </div>
                         </div>
@@ -2871,5 +2930,17 @@ export default function App() {
         </div>
     );
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
