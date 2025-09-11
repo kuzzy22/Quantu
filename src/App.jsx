@@ -713,10 +713,40 @@ const LoginPage = ({ setPage, setCurrentUser, users }) => {
 };
 
 const RegisterPage = ({ setPage }) => {
-    // Dummy registration form
+    const [accountType, setAccountType] = useState('investor');
+
     return (
         <AuthPage title="Create a new account" setPage={setPage}>
              <form className="space-y-6" onSubmit={(e) => e.preventDefault()}>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Register as</label>
+                    <div className="mt-1 grid grid-cols-2 gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setAccountType('investor')}
+                            className={`w-full inline-flex justify-center items-center py-2 px-4 border rounded-md shadow-sm text-sm font-medium transition-colors ${
+                                accountType === 'investor' 
+                                ? 'bg-indigo-600 text-white border-indigo-600' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                            <UserIcon className="w-5 h-5 mr-2" />
+                            Investor
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setAccountType('developer')}
+                            className={`w-full inline-flex justify-center items-center py-2 px-4 border rounded-md shadow-sm text-sm font-medium transition-colors ${
+                                accountType === 'developer' 
+                                ? 'bg-indigo-600 text-white border-indigo-600' 
+                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                            }`}
+                        >
+                            <BuildingIcon className="w-5 h-5 mr-2" />
+                            Developer
+                        </button>
+                    </div>
+                </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Full Name</label>
                     <input type="text" required className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm" />
@@ -2930,6 +2960,7 @@ export default function App() {
         </div>
     );
 }
+
 
 
 
