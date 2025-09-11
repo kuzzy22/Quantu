@@ -1,4 +1,4 @@
-  import React, { useState, useEffect, useMemo } from 'react';
+   import React, { useState, useEffect, useMemo } from 'react';
 
 // --- MOCK DATA --- //
 // In a real application, this data would come from a secure backend and blockchain.
@@ -1084,6 +1084,134 @@ const HelpAndSupport = ({ currentUser }) => {
 };
 
 // --- INVESTOR DASHBOARD --- //
+// --- CHART COMPONENTS --- //
+const PortfolioPerformanceChart = ({ data }) => {
+    const width = 500;
+    const height = 250;
+    const padding = 50;
+
+    const maxValue = Math.max(...data.map(d => d.value));
+    const minValue = Math.min(...data.map(d => d.value));
+    
+    const xScale = (index) => padding + (index / (data.length - 1)) * (width - 2 * padding);
+    const yScale = (value) => height - padding - ((value - minValue) / (maxValue - minValue)) * (height - 2 * padding);
+    
+    const path = data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xScale(i)} ${yScale(d.value)}`).join(' ');
+    const areaPath = `${path} L ${xScale(data.length - 1)} ${height - padding} L ${xScale(0)} ${height - padding} Z`;
+
+    const yAxisLabels = () => {
+        const labels = [];
+        const steps = 4;
+        for (let i = 0; i <= steps; i++) {
+            const value = minValue + (i / steps) * (maxValue - minValue);
+            labels.push(
+                <g key={i}>
+                    <text x={padding - 10} y={yScale(value)} textAnchor="end" dy="0.35em" className="text-xs fill-current text-gray-500">
+                        ${(value / 1000).toFixed(1)}k
+                    </text>
+                     <line x1={padding} y1={yScale(value)} x2={width-padding} y2={yScale(value)} className="stroke-current text-gray-200" strokeDasharray="2,2"/>
+                </g>
+            );
+        }
+        return labels;
+    };
+
+    return (
+        <div className="w-full h-full">
+            <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto">
+                <defs>
+                    <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.4"/>
+                        <stop offset="100%" stopColor="#4f46e5" stopOpacity="0"/>
+                    </linearGradient>
+                </defs>
+                
+                {/* Y-axis labels and grid lines */}
+                {yAxisLabels()}
+
+                {/* X-axis labels */}
+                {data.map((d, i) => (
+                    <text key={i} x={xScale(i)} y={height - padding + 15} textAnchor="middle" className="text-xs fill-current text-gray-500">
+                        {d.month}
+                    </text>
+                ))}
+
+                {/* Area path */}
+                <path d={areaPath} fill="url(#areaGradient)" />
+
+                {/* Line path */}
+                <path d={path} fill="none" stroke="#4f46e5" strokeWidth="2" />
+
+                {/* Data points */}
+                {data.map((d, i) => (
+                    <circle key={i} cx={xScale(i)} cy={yScale(d.value)} r="4" fill="#fff" stroke="#4f46e5" strokeWidth="2" />
+                ))}
+            </svg>
+        </div>
+    );
+};
+
+const AssetAllocationChart = ({ data }) => {
+    const size = 150;
+    const strokeWidth = 20;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const totalValue = data.reduce((sum, item) => sum + item.value, 0);
+
+    let cumulativePercent = 0;
+
+    return (
+        <div className="flex flex-col md:flex-row items-center justify-center gap-6 h-full">
+            <div className="relative" style={{ width: size, height: size }}>
+                <svg viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
+                    <circle
+                        cx={size / 2}
+                        cy={size / 2}
+                        r={radius}
+                        fill="transparent"
+                        stroke="#e5e7eb"
+                        strokeWidth={strokeWidth}
+                    />
+                    {data.map((item, index) => {
+                        const percent = (item.value / totalValue) * 100;
+                        const offset = circumference - (cumulativePercent / 100) * circumference;
+                        const dash = (percent / 100) * circumference;
+                        cumulativePercent += percent;
+                        return (
+                            <circle
+                                key={index}
+                                cx={size / 2}
+                                cy={size / 2}
+                                r={radius}
+                                fill="transparent"
+                                stroke={item.color}
+                                strokeWidth={strokeWidth}
+                                strokeDasharray={`${dash} ${circumference}`}
+                                strokeDashoffset={-offset}
+                                className="transition-all duration-500"
+                            />
+                        );
+                    })}
+                </svg>
+                 <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-xs text-gray-500">Total</span>
+                    <span className="text-xl font-bold text-gray-800">${(totalValue / 1000).toFixed(1)}k</span>
+                </div>
+            </div>
+            <div className="flex flex-col gap-2">
+                {data.map((item, index) => (
+                    <div key={index} className="flex items-center text-sm">
+                        <span className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: item.color }}></span>
+                        <span className="text-gray-600 mr-2">{item.name}:</span>
+                        <span className="font-semibold text-gray-800">{((item.value / totalValue) * 100).toFixed(1)}%</span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+
 const InvestorDashboard = ({ currentUser, projects, portfolios, marketListings, onLogout, onClaimApy, onListToken, onInvest }) => {
     const [activeItem, setActiveItem] = useState('Dashboard');
 
@@ -1143,6 +1271,34 @@ const InvestorDashboardOverview = ({ currentUser, projects, portfolios }) => {
         { id: 3, type: 'Deposit', project: 'USD Wallet', amount: 25000, date: '2025-07-15' },
     ];
 
+    const performanceData = [
+      { month: 'Apr', value: 13000 },
+      { month: 'May', value: 14500 },
+      { month: 'Jun', value: 14000 },
+      { month: 'Jul', value: 15500 },
+      { month: 'Aug', value: 17000 },
+      { month: 'Sep', value: 17500 },
+    ];
+
+    const allocationData = useMemo(() => {
+        const allocation = {};
+        userPortfolio.tokens.forEach(token => {
+            const project = projects.find(p => p.id === token.projectId);
+            if (project) {
+                if (!allocation[project.title]) {
+                    allocation[project.title] = 0;
+                }
+                allocation[project.title] += token.amount;
+            }
+        });
+        const colors = ['#4f46e5', '#818cf8', '#a78bfa', '#c4b5fd'];
+        return Object.entries(allocation).map(([name, value], index) => ({
+            name,
+            value,
+            color: colors[index % colors.length]
+        }));
+    }, [userPortfolio, projects]);
+
 
     return (
          <div>
@@ -1151,6 +1307,19 @@ const InvestorDashboardOverview = ({ currentUser, projects, portfolios }) => {
                 <StatCard title="Total Investment" value={formatCurrency(stats.totalInvestment)} icon={<DollarSignIcon className="w-6 h-6" />} />
                 <StatCard title="Lifetime APY Earned" value={formatCurrency(stats.lifetimeApy)} icon={<TrendingUpIcon className="w-6 h-6" />} />
                 <StatCard title="Projects Invested" value={stats.uniqueProjects} icon={<BuildingIcon className="w-6 h-6" />} />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
+                <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-md">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">Portfolio Performance</h3>
+                    <PortfolioPerformanceChart data={performanceData} />
+                </div>
+                <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md flex flex-col">
+                     <h3 className="text-xl font-bold text-gray-800 mb-4">Asset Allocation</h3>
+                     <div className="flex-grow flex items-center justify-center">
+                        <AssetAllocationChart data={allocationData} />
+                     </div>
+                </div>
             </div>
             
             <div className="bg-white p-6 rounded-lg shadow-md">
@@ -1648,9 +1817,26 @@ const CryptoWallet = ({ wallet }) => {
 
 const FiatWallet = ({ wallet }) => {
     const [modalConfig, setModalConfig] = useState({ isOpen: false, action: null });
+    const [ngnAmount, setNgnAmount] = useState('');
     
-    const openModal = (action) => setModalConfig({ isOpen: true, action });
+    const openModal = (action) => {
+        setNgnAmount(''); // Reset amount when opening modal
+        setModalConfig({ isOpen: true, action });
+    };
     const closeModal = () => setModalConfig({ isOpen: false, action: null });
+
+    const handleNgnChange = (e) => {
+        const value = e.target.value;
+        // Remove all non-digit characters
+        const numericString = value.replace(/[^0-9]/g, '');
+        if (numericString) {
+            // Format the number with commas
+            const formattedValue = parseInt(numericString, 10).toLocaleString('en-US');
+            setNgnAmount(formattedValue);
+        } else {
+            setNgnAmount('');
+        }
+    };
 
     return (
         <div>
@@ -1696,7 +1882,13 @@ const FiatWallet = ({ wallet }) => {
                         </div>
                          <div>
                             <label className="block text-sm font-medium text-gray-700">Amount (NGN)</label>
-                            <input type="number" placeholder="0.00" className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"/>
+                            <input 
+                                type="text" 
+                                placeholder="0" 
+                                value={ngnAmount}
+                                onChange={handleNgnChange}
+                                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                            />
                         </div>
                         <button type="submit" className="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Request Withdrawal</button>
                     </form>
@@ -1883,58 +2075,158 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
 
 
 const CurrencyExchange = () => {
-    const [ngnAmount, setNgnAmount] = useState('100000');
-    const [cryptoAmount, setCryptoAmount] = useState('125.00');
-    const [selectedCrypto, setSelectedCrypto] = useState('USDT');
+    const USD_NGN_RATE = 1500;
 
-    const handleNgnChange = (e) => {
-        const value = e.target.value;
-        setNgnAmount(value);
-        // Dummy conversion rate
-        setCryptoAmount((value / 800).toFixed(2));
+    const [fieldA, setFieldA] = useState({ currency: 'NGN', amount: '150,000' });
+    const [fieldB, setFieldB] = useState({ currency: 'USD', amount: '100.00' });
+    const [activeField, setActiveField] = useState('A'); // Determines which field drives the calculation
+
+    const formatValue = (num, currency) => {
+        if (isNaN(num) || num === null) return '';
+        if (currency === 'NGN') return num.toLocaleString('en-US', { maximumFractionDigits: 0 });
+        return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
-    
+
+    // Effect to calculate B when A changes
+    useEffect(() => {
+        if (activeField !== 'A') return;
+        const numericAmount = parseFloat(fieldA.amount.replace(/,/g, '')) || 0;
+        let converted;
+        if (fieldA.currency === 'NGN' && fieldB.currency === 'USD') converted = numericAmount / USD_NGN_RATE;
+        else if (fieldA.currency === 'USD' && fieldB.currency === 'NGN') converted = numericAmount * USD_NGN_RATE;
+        else converted = numericAmount;
+        
+        setFieldB(prev => ({ ...prev, amount: formatValue(converted, prev.currency) }));
+    }, [fieldA.amount, fieldA.currency, fieldB.currency, activeField]);
+
+    // Effect to calculate A when B changes
+    useEffect(() => {
+        if (activeField !== 'B') return;
+        const numericAmount = parseFloat(fieldB.amount.replace(/,/g, '')) || 0;
+        let converted;
+        if (fieldB.currency === 'NGN' && fieldA.currency === 'USD') converted = numericAmount / USD_NGN_RATE;
+        else if (fieldB.currency === 'USD' && fieldA.currency === 'NGN') converted = numericAmount * USD_NGN_RATE;
+        else converted = numericAmount;
+
+        setFieldA(prev => ({ ...prev, amount: formatValue(converted, prev.currency) }));
+    }, [fieldB.amount, fieldB.currency, fieldA.currency, activeField]);
+
+    const handleAmountChange = (field, value) => {
+        // Allow only numbers and a single decimal point for USD
+        const currency = field === 'A' ? fieldA.currency : fieldB.currency;
+        let sanitizedValue = value.replace(/,/g, '');
+
+        if (currency === 'USD') {
+             sanitizedValue = sanitizedValue.replace(/[^0-9.]/g, '');
+             const parts = sanitizedValue.split('.');
+             if (parts.length > 2) { // More than one decimal point
+                 sanitizedValue = parts[0] + '.' + parts.slice(1).join('');
+             }
+        } else { // NGN
+            sanitizedValue = sanitizedValue.replace(/[^0-9]/g, '');
+        }
+
+        const numericValue = parseFloat(sanitizedValue);
+        const formattedValue = isNaN(numericValue) ? '' : (currency === 'NGN' ? parseInt(sanitizedValue, 10).toLocaleString('en-US') : sanitizedValue);
+
+        if (field === 'A') {
+            setActiveField('A');
+            setFieldA(prev => ({ ...prev, amount: formattedValue }));
+        } else { // field B
+            setActiveField('B');
+            setFieldB(prev => ({ ...prev, amount: formattedValue }));
+        }
+    };
+
+    const handleCurrencyChange = (field, currency) => {
+        if (field === 'A') {
+            const otherCurrency = fieldB.currency;
+            setFieldA(prev => ({ ...prev, currency }));
+            if (currency === otherCurrency) {
+                setFieldB(prev => ({ ...prev, currency: currency === 'USD' ? 'NGN' : 'USD' }));
+            }
+            setActiveField('A');
+        } else { // field B
+            const otherCurrency = fieldA.currency;
+            setFieldB(prev => ({ ...prev, currency }));
+            if (currency === otherCurrency) {
+                setFieldA(prev => ({ ...prev, currency: currency === 'USD' ? 'NGN' : 'USD' }));
+            }
+            setActiveField('B');
+        }
+    };
+
+    const handleSwap = () => {
+        const tempFieldA = { ...fieldA };
+        setFieldA({ ...fieldB });
+        setFieldB({ ...tempFieldA });
+        setActiveField('A'); // Always recalculate from top field after swap
+    };
+
+    const ExchangeInput = ({ field, value, onAmountChange, onCurrencyChange, onFocus, label }) => (
+        <div className="p-4 border rounded-lg">
+            <div className="flex justify-between items-center mb-2">
+                <label className="text-sm font-medium text-gray-500">{label}</label>
+                <span className="text-sm text-gray-500">Balance: ...</span>
+            </div>
+            <div className="flex items-center">
+                <input
+                    type="text"
+                    value={value.amount}
+                    onChange={(e) => onAmountChange(field, e.target.value)}
+                    onFocus={() => onFocus(field)}
+                    placeholder="0"
+                    className="w-full text-3xl font-bold border-0 p-0 focus:ring-0 bg-transparent"
+                />
+                <select value={value.currency} onChange={(e) => onCurrencyChange(field, e.target.value)} className="text-xl font-semibold border-0 focus:ring-0 bg-gray-100 rounded-md p-2">
+                    <option>NGN</option>
+                    <option>USD</option>
+                </select>
+            </div>
+        </div>
+    );
+
     return (
-         <div className="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Currency Exchange</h2>
-            <div className="space-y-6">
-                <div className="p-6 border rounded-lg">
-                    <div className="flex justify-between items-center mb-4">
-                        <label className="text-lg font-medium text-gray-700">You Pay (NGN)</label>
-                        <span className="text-sm text-gray-500">Balance: ₦ 5,000,000</span>
-                    </div>
-                    <input 
-                        type="number" 
-                        value={ngnAmount}
-                        onChange={handleNgnChange}
-                        className="w-full text-3xl font-bold border-0 p-0 focus:ring-0"
-                    />
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Fiat Exchange</h2>
+            <div className="space-y-2">
+                <ExchangeInput
+                    field="A"
+                    value={fieldA}
+                    onAmountChange={handleAmountChange}
+                    onCurrencyChange={handleCurrencyChange}
+                    onFocus={setActiveField}
+                    label="You Pay"
+                />
+
+                <div className="flex justify-center py-2">
+                    <button onClick={handleSwap} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-indigo-600 transition-colors">
+                        <RepeatIcon className="w-6 h-6" />
+                    </button>
                 </div>
-                <div className="flex justify-center my-4">
-                    <RepeatIcon className="w-8 h-8 text-gray-400"/>
-                </div>
-                <div className="p-6 border rounded-lg">
-                    <div className="flex justify-between items-center mb-4">
-                        <label className="text-lg font-medium text-gray-700">You Receive (Crypto)</label>
-                    </div>
-                     <div className="flex items-end">
-                        <input type="text" value={cryptoAmount} readOnly className="w-full text-3xl font-bold border-0 p-0 focus:ring-0 bg-transparent" />
-                        <select value={selectedCrypto} onChange={(e) => setSelectedCrypto(e.target.value)} className="text-xl font-semibold border-0 focus:ring-0">
-                            <option>USDT</option>
-                            <option>USDC</option>
-                        </select>
-                    </div>
-                </div>
-                <div className="text-sm text-gray-600 text-center">
-                    <p>Exchange Rate: 1 {selectedCrypto} ≈ 800 NGN</p>
+                
+                <ExchangeInput
+                    field="B"
+                    value={fieldB}
+                    onAmountChange={handleAmountChange}
+                    onCurrencyChange={handleCurrencyChange}
+                    onFocus={setActiveField}
+                    label="You Receive"
+                />
+
+                <div className="pt-4 text-sm text-gray-600 text-center">
+                    <p>Exchange Rate: 1 USD ≈ {USD_NGN_RATE.toLocaleString()} NGN</p>
                     <p>Fee: 0.5%</p>
                 </div>
-                <button
-                    onClick={() => alert('Currency swap initiated!')}
-                    className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700"
-                >
-                    Swap
-                </button>
+
+                <div className="pt-2">
+                    <button
+                        onClick={() => alert('Currency swap initiated!')}
+                        className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                    >
+                        Convert
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -2015,6 +2307,8 @@ const DeveloperDashboardOverview = ({ currentUser, projects, portfolios }) => {
         return { totalCapitalRaised, activeProjects, totalInvestors, upcomingPayout };
     }, [projects, portfolios]);
 
+    const liveProject = projects.find(p => p.status === 'active' && p.amountRaised < p.fundingGoal);
+
     return (
         <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -2024,37 +2318,170 @@ const DeveloperDashboardOverview = ({ currentUser, projects, portfolios }) => {
                 <StatCard title="Next Month APY Payout" value={formatCurrency(stats.upcomingPayout)} icon={<TrendingUpIcon className="w-6 h-6" />} />
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-md">
-                <h3 className="text-xl font-bold text-gray-800 mb-4">Projects Summary</h3>
-                <div className="space-y-4">
-                    {projects.length > 0 ? projects.map(project => {
-                        const progress = project.fundingGoal > 0 ? (project.amountRaised / project.fundingGoal) * 100 : 0;
-                        return (
-                            <div key={project.id} className="border-b pb-4 last:border-b-0">
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="font-semibold text-gray-800">{project.title}</span>
-                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                                         project.status === 'active' ? 'bg-green-100 text-green-800' :
-                                         project.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                         project.status === 'funded' ? 'bg-blue-100 text-blue-800' :
-                                         'bg-gray-100 text-gray-800'
-                                     }`}>{project.status.toUpperCase()}</span>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                 <div className="bg-white p-6 rounded-lg shadow-md">
+                    <h3 className="text-xl font-bold text-gray-800 mb-4">Projects Summary</h3>
+                    <div className="space-y-4">
+                        {projects.length > 0 ? projects.map(project => {
+                            const progress = project.fundingGoal > 0 ? (project.amountRaised / project.fundingGoal) * 100 : 0;
+                            return (
+                                <div key={project.id} className="border-b pb-4 last:border-b-0">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="font-semibold text-gray-800">{project.title}</span>
+                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                                             project.status === 'active' ? 'bg-green-100 text-green-800' :
+                                             project.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                             project.status === 'funded' ? 'bg-blue-100 text-blue-800' :
+                                             'bg-gray-100 text-gray-800'
+                                         }`}>{project.status.toUpperCase()}</span>
+                                    </div>
+                                    <div className="flex justify-between text-sm text-gray-500 mb-1">
+                                        <span>{formatCurrency(project.amountRaised)} / {formatCurrency(project.fundingGoal)}</span>
+                                        <span>{progress.toFixed(1)}%</span>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-2">
+                                        <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${progress}%` }}></div>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between text-sm text-gray-500 mb-1">
-                                    <span>{formatCurrency(project.amountRaised)} / {formatCurrency(project.fundingGoal)}</span>
-                                    <span>{progress.toFixed(1)}%</span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div className="bg-indigo-600 h-2 rounded-full" style={{ width: `${progress}%` }}></div>
-                                </div>
+                            )
+                        }) : <p className="text-gray-500">You have not created any projects yet.</p>}
+                    </div>
+                </div>
+                <div className="space-y-8">
+                    {liveProject ? <LiveFundingCard project={liveProject} /> : 
+                        <div className="bg-white p-6 rounded-lg shadow-md flex items-center justify-center">
+                            <div className="text-center">
+                                 <h3 className="text-xl font-bold text-gray-800 mb-2">No Active Fundraising</h3>
+                                 <p className="text-gray-500">None of your projects are currently in an active funding round.</p>
                             </div>
-                        )
-                    }) : <p className="text-gray-500">You have not created any projects yet.</p>}
+                        </div>
+                    }
+                    <UpcomingApyCard projects={projects} />
                 </div>
             </div>
         </div>
     );
 };
+
+const UpcomingApyCard = ({ projects }) => {
+    const upcomingPayments = useMemo(() => {
+        const today = new Date();
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(today.getDate() + 30);
+
+        const payments = projects
+            .filter(p => (p.status === 'active' || p.status === 'funded'))
+            .map(project => {
+                const paymentDay = new Date(project.startDate).getDate();
+                let nextPaymentDate = new Date(today.getFullYear(), today.getMonth(), paymentDay);
+
+                if (nextPaymentDate < today) {
+                    nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
+                }
+                
+                if (nextPaymentDate < today) {
+                     nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
+                }
+
+
+                if (nextPaymentDate <= thirtyDaysFromNow) {
+                    return {
+                        projectId: project.id,
+                        projectName: project.title,
+                        dueDate: nextPaymentDate,
+                        amount: (project.amountRaised * (project.apy / 100)) / 12,
+                    };
+                }
+                return null;
+            })
+            .filter(Boolean);
+
+        return payments.sort((a, b) => a.dueDate - b.dueDate);
+    }, [projects]);
+
+    const formatDate = (date) => {
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Upcoming APY Payments</h3>
+             <div className="space-y-3">
+                {upcomingPayments.length > 0 ? upcomingPayments.map(payment => (
+                    <div key={payment.projectId} className="flex justify-between items-center bg-gray-50 p-3 rounded-md">
+                        <div>
+                            <p className="font-semibold text-gray-800">{payment.projectName}</p>
+                            <p className="text-sm text-gray-500">Due: {formatDate(payment.dueDate)}</p>
+                        </div>
+                        <p className="font-semibold text-indigo-600">{formatCurrency(payment.amount)}</p>
+                    </div>
+                )) : (
+                    <div className="text-center py-8">
+                        <p className="text-gray-500">No APY payments due in the next 30 days.</p>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const LiveFundingCard = ({ project }) => {
+    const [currentAmount, setCurrentAmount] = useState(project.amountRaised);
+    const [recentInvestments, setRecentInvestments] = useState([]);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (currentAmount < project.fundingGoal) {
+                const newInvestment = Math.floor(Math.random() * 4501) + 500; // Random investment between 500 and 5000
+                
+                setCurrentAmount(prevAmount => {
+                    const nextAmount = prevAmount + newInvestment;
+                    return nextAmount > project.fundingGoal ? project.fundingGoal : nextAmount;
+                });
+
+                setRecentInvestments(prev => [
+                    { id: Date.now(), amount: newInvestment },
+                    ...prev.slice(0, 4) // Keep only the last 5 investments
+                ]);
+            }
+        }, 3500); // New investment every 3.5 seconds
+
+        return () => clearInterval(interval);
+    }, [currentAmount, project.fundingGoal]);
+
+    const progress = (currentAmount / project.fundingGoal) * 100;
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
+            <h3 className="text-xl font-bold text-gray-800 mb-1">Live Funding Activity</h3>
+            <p className="text-sm text-gray-500 mb-4">Now funding: <strong>{project.title}</strong></p>
+            
+            <div className="mb-4">
+                 <div className="flex justify-between text-sm text-gray-600 font-medium mb-1">
+                    <span>{formatCurrency(currentAmount)}</span>
+                    <span>{formatCurrency(project.fundingGoal)}</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                    <div className="bg-green-500 h-4 rounded-full text-center text-white text-xs font-bold transition-all duration-500 ease-out flex items-center justify-center" style={{ width: `${progress}%` }}>
+                       {progress > 10 && `${progress.toFixed(1)}%`}
+                    </div>
+                </div>
+            </div>
+
+            <div className="border-t pt-4 h-40 relative overflow-y-auto">
+                <h4 className="font-semibold text-gray-700 mb-2 sticky top-0 bg-white pb-2">Recent Investments</h4>
+                <div className="space-y-2">
+                    {recentInvestments.length > 0 ? recentInvestments.map((investment, index) => (
+                         <div key={investment.id} className={`p-2 rounded-md bg-green-50 flex justify-between items-center transition-opacity duration-500 ${index > 0 ? 'opacity-70' : ''}`}>
+                            <span className="text-sm text-green-800">New Investment</span>
+                            <span className="text-sm font-bold text-green-900">{formatCurrency(investment.amount)}</span>
+                        </div>
+                    )) : <p className="text-sm text-gray-500 text-center py-4">Waiting for new investments...</p>}
+                </div>
+            </div>
+        </div>
+    );
+}
 
 
 const DeveloperMyProjects = ({ projects, onManageProject }) => {
@@ -2992,6 +3419,17 @@ export default function App() {
         </div>
     );
 }
+
+
+
+
+
+
+
+
+
+
+
 
 
 
