@@ -1,4 +1,40 @@
-     import React, { useState, useEffect, useMemo } from 'react';
+ 
+// NOTE: useEffect without dependency arrays found at lines: 885, 905, 2435, 2715, 3295. Review and add dependency arrays to avoid unexpected re-renders.
+      import React, { useState, useEffect, useMemo } from 'react';
+// --- Utility helpers (added) --- //
+const computeMonthlyApy = (amount, apy, decimals = 2, rounding = 'round') => {
+  // amount: numeric principal (token amount or value)
+  // apy: annual percentage (e.g., 12.5 for 12.5%)
+  if (isNaN(amount) || isNaN(apy)) return 0;
+  const monthly = (Number(amount) * (Number(apy) / 100)) / 12;
+  // rounding: 'round' or 'floor' or 'ceil'
+  let factor = Math.pow(10, decimals);
+  if (rounding === 'floor') return Math.floor(monthly * factor) / factor;
+  if (rounding === 'ceil') return Math.ceil(monthly * factor) / factor;
+  return Math.round(monthly * factor) / factor;
+};
+
+const normalizeDate = (d) => {
+  if (!d) return null;
+  const dt = (typeof d === 'string' || typeof d === 'number') ? new Date(d) : d;
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt.toISOString();
+};
+
+// Decide payout currency: prefer project.payoutCurrency, else default to 'usdt' for stable on-ramps.
+const choosePayoutCurrency = (project) => {
+  if (!project) return 'usdt';
+  if (project.payoutCurrency) return project.payoutCurrency.toLowerCase();
+  // if project's tokenTicker is USD-pegged, prefer usdt/usdc
+  const usdTickers = ['USDT','USDC','USD','DAI'];
+  if (usdTickers.includes((project.tokenTicker || '').toUpperCase())) return 'usdt';
+  // otherwise default to NGN for local projects
+  if (project.location && project.location.toLowerCase().includes('nigeria')) return 'ngn';
+  return 'usdt';
+};
+
+
+
 
 // --- MOCK DATA --- //
 // In a real application, this data would come from a secure backend and blockchain.
@@ -261,12 +297,11 @@ const LockupTimer = ({ endDate }) => {
     const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setTimeLeft(calculateTimeLeft());
-        }, 1000);
-
-        return () => clearTimeout(timer);
-    });
+        const update = () => setTimeLeft(calculateTimeLeft());
+        update();
+        const timer = setInterval(update, 1000);
+        return () => clearInterval(timer);
+    }, []) [endDate]);
 
     if (!Object.keys(timeLeft).length) {
         return <span className="text-green-600 font-semibold">Lockup Ended</span>;
@@ -853,7 +888,7 @@ const DashboardLayout = ({ children, sidebarItems, activeItem, setActiveItem, on
         // Tailor notifications based on user type
         if (currentUser.type === 'admin') {
             setNotifications([
-                { id: 1, text: 'New project "Ikeja Tech Hub" submitted for approval.', read: false, time: '5m ago' },
+                { id: 1, text: 'New project "Ikeja Tech Hub" submitted for approval.', read: false, time: '5m ago' }, [currentUser])
                 { id: 2, text: 'User Bayo Adekunle has submitted KYC documents.', read: false, time: '1h ago' },
                 { id: 3, text: 'Eko Atlantic Tower has reached 50% funding.', read: true, time: '4h ago' },
                 { id: 4, text: 'New developer account created: Babbage Constructions Ltd.', read: true, time: '1d ago' },
@@ -880,7 +915,7 @@ const DashboardLayout = ({ children, sidebarItems, activeItem, setActiveItem, on
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
         };
-    }, []);
+    }, []) []);
 
     const handleNavItemClick = (itemName) => {
         setActiveItem(itemName);
@@ -1355,7 +1390,7 @@ const InvestorDashboardOverview = ({ currentUser, projects, portfolios }) => {
         { id: 3, type: 'Deposit', project: 'USD Wallet', amount: 25000, date: '2025-07-15' },
     ];
 
-    const cryptoBalance = currentUser.wallet.usdt + currentUser.wallet.usdc;
+    const cryptoBalance = currentUser.wallet.usdtt + currentUser.wallet.usdtc;
 
     const performanceData = [
       { month: 'Apr', value: 13000 },
@@ -1640,7 +1675,7 @@ const ListTokenModal = ({ isOpen, onClose, token, project, onConfirmList, curren
                 setError('');
                 setActiveInput('total');
                 setStep('input');
-            }, 300); // Delay reset to avoid flicker on close
+            }, []) 300); // Delay reset to avoid flicker on close
         }
     }, [isOpen]);
 
@@ -1945,8 +1980,8 @@ const CryptoWallet = ({ wallet }) => {
     const closeModal = () => setModalConfig({ isOpen: false, action: null, currency: null });
 
     const cryptoAssets = [
-        { name: 'USDT', balance: wallet.usdt, logo: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=023' },
-        { name: 'USDC', balance: wallet.usdc, logo: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=023' }
+        { name: 'USDT', balance: wallet.usdtt, logo: 'https://cryptologos.cc/logos/tether-usdt-logo.svg?v=023' },
+        { name: 'USDC', balance: wallet.usdtc, logo: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.svg?v=023' }
     ];
 
     return (
@@ -2396,7 +2431,7 @@ const CurrencyExchange = () => {
                 setCryptoAmount('0.00');
             }
         }
-    }, [ngnAmount, activeField]);
+    }, []) [ngnAmount, activeField]);
 
     // Recalculate NGN when crypto changes
     useEffect(() => {
@@ -2409,7 +2444,7 @@ const CurrencyExchange = () => {
                 setNgnAmount('0');
             }
         }
-    }, [cryptoAmount, selectedCrypto, activeField]);
+    }, []) [cryptoAmount, selectedCrypto, activeField]);
 
     const handleNgnChange = (e) => {
         setActiveField('NGN');
@@ -2506,7 +2541,7 @@ const DeveloperDashboard = ({ currentUser, projects, portfolios, marketListings,
                 }
                 return <DeveloperMyProjects projects={developerProjects} onManageProject={setManagingProjectId} />;
             case 'Create New Project': return <DeveloperCreateProject />;
-            case 'Marketplace': return <InvestorMarketplace currentUser={currentUser} marketListings={marketListings} projects={projects} />;
+            case 'Marketplace': return <InvestorMarketplace currentUser={currentUser} marketListings={marketListings} projects={projects} onInvest={() => alert("Developers cannot invest from this view.")} />;
             case 'Operational Wallet': return <DeveloperWallet currentUser={currentUser} />;
             case 'Settings': return <DeveloperSettings currentUser={currentUser} />;
             case 'Help & Support': return <HelpAndSupport currentUser={currentUser} />;
@@ -2517,7 +2552,7 @@ const DeveloperDashboard = ({ currentUser, projects, portfolios, marketListings,
     // Reset management view when switching sidebar tabs
     useEffect(() => {
         setManagingProjectId(null);
-    }, [activeItem]);
+    }, []) [activeItem]);
 
     return (
         <DashboardLayout currentUser={currentUser} sidebarItems={sidebarItems} activeItem={activeItem} setActiveItem={setActiveItem} onLogout={onLogout} totalBalance={totalBalance}>
@@ -2553,15 +2588,19 @@ const DeveloperDashboardOverview = ({ currentUser, projects, portfolios }) => {
         return { totalCapitalRaised, activeProjects, totalInvestors, upcomingPayout };
     }, [projects, portfolios]);
 
+    const cryptoBalance = currentUser.wallet.usdtt + currentUser.wallet.usdtc;
+
     const liveProject = projects.find(p => p.status === 'active' && p.amountRaised < p.fundingGoal);
 
     return (
         <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <StatCard title="Total Capital Raised" value={formatCurrency(stats.totalCapitalRaised)} icon={<DollarSignIcon className="w-6 h-6" />} />
                 <StatCard title="Active Projects" value={stats.activeProjects} icon={<ZapIcon className="w-6 h-6" />} />
                 <StatCard title="Total Investors" value={stats.totalInvestors} icon={<UserIcon className="w-6 h-6" />} />
                 <StatCard title="Next Month APY Payout" value={formatCurrency(stats.upcomingPayout)} icon={<TrendingUpIcon className="w-6 h-6" />} />
+                <StatCard title="NGN Balance" value={formatNgnCurrency(currentUser.wallet.ngn)} icon={<WalletIcon className="w-6 h-6" />} />
+                <StatCard title="Crypto Balance" value={formatCurrency(cryptoBalance)} icon={<WalletIcon className="w-6 h-6" />} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -2686,7 +2725,7 @@ const LiveFundingCard = ({ project }) => {
                 });
 
                 setRecentInvestments(prev => [
-                    { id: Date.now(), amount: newInvestment },
+                    { id: Date.now(), amount: newInvestment }, [])
                     ...prev.slice(0, 4) // Keep only the last 5 investments
                 ]);
             }
@@ -3002,7 +3041,7 @@ const DeveloperCreateProject = () => {
         } else {
             setImpliedPrice(0);
         }
-    }, [formData.fundingGoal, formData.tokenSupply]);
+    }, []) [formData.fundingGoal, formData.tokenSupply]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -3274,7 +3313,7 @@ const AdminLiveFundingMonitor = ({ allProjects, onSelectProject }) => {
                     return p;
                 });
             });
-        }, 2500); // Update every 2.5 seconds
+        }, []) 2500); // Update every 2.5 seconds
 
         return () => clearInterval(interval);
     }, []);
@@ -3662,7 +3701,7 @@ export default function App() {
 
     const handleClaimApy = (tokenId, userId) => {
         setPortfolios(prevPortfolios => {
-            const newPortfolios = JSON.parse(JSON.stringify(prevPortfolios));
+            const newPortfolios = /* deep-copy via JSON (note: loses Date objects) */ JSON.parse(JSON.stringify(prevPortfolios));
             const userPortfolio = newPortfolios[userId];
             if (!userPortfolio) return prevPortfolios;
 
@@ -3672,17 +3711,24 @@ export default function App() {
             const project = projects.find(p => p.id === token.projectId);
             if (!project) return prevPortfolios;
 
-            const monthlyApyAmount = (token.amount * (project.apy / 100)) / 12;
+            const monthlyApyAmount = computeMonthlyApy(token.amount, project.apy);
 
-            // Update user's wallet
-            const userToUpdate = users[currentUser.email];
-            if (userToUpdate) {
-                userToUpdate.wallet.usd += monthlyApyAmount;
-                setUsers(prevUsers => ({...prevUsers, [currentUser.email]: userToUpdate}));
-            }
+            // Update user's wallet (immutable)
+            setUsers(prevUsers => {
+                const existing = prevUsers && prevUsers[currentUser.email];
+                if (!existing) return prevUsers;
+                const updatedUser = {
+                    ...existing,
+                    wallet: {
+                        ...existing.wallet,
+                        usdt: (existing.wallet.usdtt || 0) + monthlyApyAmount
+                    }
+                };
+                return { ...prevUsers, [currentUser.email]: updatedUser };
+            });
             
             // Update token's last claim date
-            token.lastApyClaimDate = new Date().toISOString();
+            token.lastApyClaimDate = normalizeDate(new Date());
             
             alert(`Successfully claimed ${formatCurrency(monthlyApyAmount)} APY!`);
 
@@ -3776,7 +3822,7 @@ export default function App() {
 
         // 3. Create new tokens for the investor
         setPortfolios(prevPortfolios => {
-            const newPortfolios = JSON.parse(JSON.stringify(prevPortfolios));
+            const newPortfolios = /* deep-copy via JSON (note: loses Date objects) */ JSON.parse(JSON.stringify(prevPortfolios));
             const userPortfolio = newPortfolios[currentUser.id] || { tokens: [] };
             
             userPortfolio.tokens.push({
@@ -3836,11 +3882,6 @@ export default function App() {
         </div>
     );
 }
-
-
-
-
-
 
 
 
