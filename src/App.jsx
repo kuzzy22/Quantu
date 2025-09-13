@@ -256,20 +256,20 @@ const DownloadLogoButton = () => {
         const ctx = canvas.getContext('2d');
         const img = new Image();
 
-        const scale = 4;
+        // Increased scale for High-Definition output (1008x1008 pixels)
+        const scale = 42;
         canvas.width = 24 * scale;
         canvas.height = 24 * scale;
 
         img.onload = () => {
-            ctx.fillStyle = '#FFFFFF'; // JPEG needs a background
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // No background fill needed for PNG transparency
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-            const jpegUrl = canvas.toDataURL('image/jpeg', 0.9);
+            const pngUrl = canvas.toDataURL('image/png');
 
             const link = document.createElement('a');
-            link.href = jpegUrl;
-            link.download = 'kayzera_logo.jpeg';
+            link.href = pngUrl;
+            link.download = 'kayzera_logo_hd.png';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -284,7 +284,7 @@ const DownloadLogoButton = () => {
             onClick={handleDownload}
             className="inline-block mt-2 text-sm text-gray-400 hover:text-white underline transition-colors"
         >
-            Download Logo
+            Download HD Logo (PNG)
         </a>
     );
 };
@@ -4132,6 +4132,7 @@ export default function App() {
         </div>
     );
 }
+
 
 
 
