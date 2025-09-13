@@ -242,8 +242,52 @@ const ChevronDownIcon = (props) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
 );
 const PaperclipIcon = (props) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
 );
+
+const DownloadLogoButton = () => {
+    const handleDownload = (e) => {
+        e.preventDefault();
+
+        const svgString = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="logoGradientDownload" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color: #6366f1; stop-opacity: 1" /><stop offset="100%" style="stop-color: #4f46e5; stop-opacity: 1" /></linearGradient></defs><path d="M4 4H8V20H4V4Z" fill="url(#logoGradientDownload)" /><path d="M9 11L16 4L20 8L13 15V20H9V11Z" fill="url(#logoGradientDownload)" /></svg>`;
+        const dataUrl = `data:image/svg+xml;base64,${btoa(svgString)}`;
+
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+
+        const scale = 4;
+        canvas.width = 24 * scale;
+        canvas.height = 24 * scale;
+
+        img.onload = () => {
+            ctx.fillStyle = '#FFFFFF'; // JPEG needs a background
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            const jpegUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+            const link = document.createElement('a');
+            link.href = jpegUrl;
+            link.download = 'kayzera_logo.jpeg';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        img.src = dataUrl;
+    };
+
+    return (
+        <a 
+            href="#"
+            onClick={handleDownload}
+            className="inline-block mt-2 text-sm text-gray-400 hover:text-white underline transition-colors"
+        >
+            Download Logo
+        </a>
+    );
+};
 
 const TwitterIcon = (props) => (
   <svg {...props} viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg>
@@ -622,6 +666,7 @@ const LandingPage = ({ setPage, projects }) => {
                                     <span className="text-2xl font-bold text-white">Kayzera</span>
                                 </a>
                                 <p className="text-gray-400 text-base max-w-xs">Democratizing real estate for everyone by making it accessible, transparent, and liquid.</p>
+                                <DownloadLogoButton />
                             </div>
                         </div>
                         <div className="md:col-span-4 lg:col-span-2">
@@ -4087,6 +4132,8 @@ export default function App() {
         </div>
     );
 }
+
+
 
 
 
