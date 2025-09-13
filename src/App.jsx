@@ -1472,6 +1472,7 @@ const InvestorMyTokens = ({ currentUser, projects, portfolios, onClaimApy, onLis
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Token Type</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tokens Held</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value (USD)</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">APY</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lockup / Status</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
@@ -1507,6 +1508,7 @@ const InvestorMyTokens = ({ currentUser, projects, portfolios, onClaimApy, onLis
                                          </td>
                                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold">{token.amount.toLocaleString()}</td>
                                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold">{formatCurrency(token.amount)}</td>
+                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">{project.apy}%</td>
                                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                              {isSecurityToken && endDate ? <LockupTimer endDate={endDate} /> : <span className="text-gray-500 capitalize">{token.status}</span>}
                                          </td>
@@ -1533,7 +1535,7 @@ const InvestorMyTokens = ({ currentUser, projects, portfolios, onClaimApy, onLis
                                  );
                             })}
                              {userPortfolio.tokens.length === 0 && (
-                                <tr><td colSpan="6" className="text-center py-8 text-gray-500">You do not own any tokens yet.</td></tr>
+                                <tr><td colSpan="7" className="text-center py-8 text-gray-500">You do not own any tokens yet.</td></tr>
                             )}
                         </tbody>
                     </table>
@@ -3895,6 +3897,7 @@ export default function App() {
         </div>
     );
 }
+
 
 
 
