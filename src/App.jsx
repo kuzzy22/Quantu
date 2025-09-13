@@ -1,4 +1,4 @@
-       import React, { useState, useEffect, useMemo } from 'react';
+         import React, { useState, useEffect, useMemo } from 'react';
 
 // --- MOCK DATA --- //
 // In a real application, this data would come from a secure backend and blockchain.
@@ -1188,7 +1188,7 @@ const PortfolioPerformanceChart = ({ data }) => {
             const value = minValue + (i / steps) * (maxValue - minValue);
             labels.push(
                 <g key={i}>
-                    <text x={padding - 10} y={yScale(value)} textAnchor="end" dy="0.35em" className="text-xs fill-current text-gray-500">
+                    <text x={padding - 10} y={yScale(value)} dy="0.35em" style={{ fontSize: '10px', fill: 'currentColor', textAnchor: 'end' }} className="text-gray-500">
                         ${(value / 1000).toFixed(1)}k
                     </text>
                      <line x1={padding} y1={yScale(value)} x2={width-padding} y2={yScale(value)} className="stroke-current text-gray-200" strokeDasharray="2,2"/>
@@ -1213,7 +1213,7 @@ const PortfolioPerformanceChart = ({ data }) => {
 
                 {/* X-axis labels */}
                 {data.map((d, i) => (
-                    <text key={i} x={xScale(i)} y={height - padding + 15} textAnchor="middle" className="text-xs fill-current text-gray-500">
+                    <text key={i} x={xScale(i)} y={height - padding + 15} style={{ fontSize: '10px', fill: 'currentColor', textAnchor: 'middle' }} className="text-gray-500">
                         {d.month}
                     </text>
                 ))}
@@ -3895,6 +3895,8 @@ export default function App() {
         </div>
     );
 }
+
+
 
 
 
