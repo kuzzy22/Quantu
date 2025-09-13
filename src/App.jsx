@@ -2214,6 +2214,7 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
     const [investmentAmount, setInvestmentAmount] = useState('');
     const [isInvestmentModalOpen, setInvestmentModalOpen] = useState(false);
     
+    const stablecoinBalance = (currentUser.wallet.usdt || 0) + (currentUser.wallet.usdc || 0);
     const numericInvestmentAmount = parseFloat(investmentAmount.replace(/,/g, '')) || 0;
     const pricePerToken = project.fundingGoal > 0 && project.tokenSupply > 0 ? project.fundingGoal / project.tokenSupply : 1;
     const tokensToReceive = numericInvestmentAmount > 0 ? numericInvestmentAmount / pricePerToken : 0;
@@ -2222,15 +2223,26 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
     const progress = (project.amountRaised / project.fundingGoal) * 100;
     
     const isDeveloper = currentUser && currentUser.type === 'developer';
+    const isFunded = project.status === 'funded';
 
     const handleAmountChange = (e) => {
         const value = e.target.value;
         const numericString = value.replace(/[^0-9]/g, '');
-        if (numericString) {
-            setInvestmentAmount(parseInt(numericString, 10).toLocaleString('en-US'));
-        } else {
+        let numericValue = parseInt(numericString, 10);
+
+        if (isNaN(numericValue)) {
             setInvestmentAmount('');
+            return;
         }
+
+        // Calculate max investment considering the 1.5% fee
+        const maxInvestment = Math.floor(stablecoinBalance / 1.015);
+
+        if (numericValue > maxInvestment) {
+            numericValue = maxInvestment;
+        }
+        
+        setInvestmentAmount(numericValue > 0 ? numericValue.toLocaleString('en-US') : '');
     };
 
     const handleConfirmInvest = () => {
@@ -2289,12 +2301,17 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
                                  <div className="mt-4">
                                     <input 
                                         type="text"
-                                        placeholder="Enter amount (USD)" 
+                                        placeholder={isFunded ? "This project is fully funded" : "Enter amount (USD)"} 
                                         value={investmentAmount}
                                         onChange={handleAmountChange}
-                                        className="w-full border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"/>
+                                        className="w-full border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
+                                        disabled={isFunded || isDeveloper}
+                                    />
+                                    <div className="mt-2 text-sm text-gray-500 text-right">
+                                        Available Balance: <strong>{formatCurrency(stablecoinBalance)}</strong>
+                                    </div>
                                  </div>
-                                {investmentAmount > 0 && (
+                                {investmentAmount > 0 && !isFunded && (
                                     <div className="mt-4 text-sm space-y-2">
                                         <div className="flex justify-between">
                                             <span className="text-gray-600">Tokens to Receive:</span>
@@ -2318,9 +2335,9 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
                                      <button 
                                         onClick={() => setInvestmentModalOpen(true)} 
                                         className="w-full bg-indigo-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                        disabled={isDeveloper || !investmentAmount || numericInvestmentAmount <= 0}
+                                        disabled={isDeveloper || isFunded || !investmentAmount || numericInvestmentAmount <= 0 || totalDebit > stablecoinBalance}
                                      >
-                                        {isDeveloper ? "Developers cannot invest" : "Invest Now"}
+                                        {isDeveloper ? "Developers cannot invest" : isFunded ? "Project Fully Funded" : "Invest Now"}
                                      </button>
                                  </div>
                              </div>
@@ -3928,6 +3945,8 @@ export default function App() {
         </div>
     );
 }
+
+
 
 
 
