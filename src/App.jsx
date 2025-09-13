@@ -1398,47 +1398,43 @@ const InvestorDashboardOverview = ({ currentUser, projects, portfolios }) => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 mb-8">
-                <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-md">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">Portfolio Performance</h3>
-                    <PortfolioPerformanceChart data={performanceData} />
-                </div>
-                <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md flex flex-col">
-                     <h3 className="text-xl font-bold text-gray-800 mb-4">Asset Allocation</h3>
-                     <div className="flex-grow flex items-center justify-center">
-                        <AssetAllocationChart data={allocationData} />
-                     </div>
-                </div>
-            </div>
-            
-            <div className="bg-white p-6 rounded-lg shadow-md">
-                 <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Activity</h2>
-                 <div className="overflow-x-auto">
-                    <table className="min-w-full">
-                        <tbody>
-                            {recentActivities.map(activity => (
-                                <tr key={activity.id} className="border-b last:border-0">
-                                    <td className="py-3 px-2">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activity.amount > 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-                                            {activity.amount > 0 ? <ArrowDownLeftIcon className="w-5 h-5 text-green-600"/> : <ArrowUpRightIcon className="w-5 h-5 text-red-600"/>}
-                                        </div>
-                                    </td>
-                                    <td className="py-3 px-2">
-                                        <p className="font-semibold text-gray-800">{activity.type}</p>
-                                        <p className="text-sm text-gray-500">{activity.project}</p>
-                                    </td>
-                                    <td className="py-3 px-2 text-right">
-                                        <p className={`font-semibold ${activity.amount > 0 ? 'text-green-600' : 'text-gray-800'}`}>{formatCurrency(activity.amount)}</p>
-                                        <p className="text-sm text-gray-500">{new Date(activity.date).toLocaleDateString()}</p>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                 </div>
-            </div>
+    <div className="lg:col-span-2 bg-white p-4 rounded-lg shadow-md"> {/* Reduced size from col-span-3 to col-span-2 and padding from p-6 to p-4 */}
+        <h3 className="text-lg font-bold text-gray-800 mb-3">Portfolio Performance</h3> {/* Reduced text size and margin */}
+        <PortfolioPerformanceChart data={performanceData} />
+    </div>
+    <div className="lg:col-span-3 bg-white p-6 rounded-lg shadow-md flex flex-col"> {/* Increased width of Asset Allocation */}
+        <h3 className="text-xl font-bold text-gray-800 mb-4">Asset Allocation</h3>
+        <div className="flex-grow flex items-center justify-center">
+            <AssetAllocationChart data={allocationData} />
         </div>
-    );
-};
+    </div>
+</div>
+
+<div className="bg-white p-6 rounded-lg shadow-md">
+    <h2 className="text-xl font-bold text-gray-800 mb-4">Recent Activity</h2>
+    <div className="overflow-x-auto">
+        <table className="min-w-full">
+            <tbody>
+                {recentActivities.map(activity => (
+                    <tr key={activity.id} className="border-b last:border-0">
+                        <td className="py-3 px-2">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${activity.amount > 0 ? 'bg-green-100' : 'bg-red-100'}`}>
+                                {activity.amount > 0 ? <ArrowDownLeftIcon className="w-5 h-5 text-green-600"/> : <ArrowUpRightIcon className="w-5 h-5 text-red-600"/>}
+                            </div>
+                        </td>
+                        <td className="py-3 px-2">
+                            <p className="font-semibold text-gray-800">{activity.type}</p>
+                            <p className="text-sm text-gray-500">{activity.project}</p>
+                        </td>
+                        <td className="py-3 px-2 text-right">
+                            <p className={`font-semibold ${activity.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>{activity.amount > 0 ? `+${activity.amount}` : activity.amount}</p>
+                        </td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
+    </div>
+</div>
 
 const InvestorMyTokens = ({ currentUser, projects, portfolios, onClaimApy, onListToken }) => {
     const userPortfolio = portfolios[currentUser.id] || { tokens: [] };
