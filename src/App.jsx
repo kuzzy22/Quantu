@@ -2089,6 +2089,16 @@ const FiatWallet = ({ wallet }) => {
 
 
 const SecondaryMarket = ({ currentUser, marketListings, projects }) => {
+    const camouflageName = (fullName) => {
+        if (!fullName || typeof fullName !== 'string') return '*****';
+        const parts = fullName.trim().split(' ');
+        const name = parts[0]; // Just use the first name for simplicity
+        if (name.length <= 4) {
+            return `${name.substring(0, 1)}***`;
+        }
+        return `${name.substring(0, 2)}***${name.substring(name.length - 2)}`;
+    };
+
     return (
         <div className="bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-bold text-gray-800 mb-4">Secondary Market Listings</h2>
@@ -2116,10 +2126,13 @@ const SecondaryMarket = ({ currentUser, marketListings, projects }) => {
                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{listing.amount.toLocaleString()}</td>
                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">{formatCurrency(pricePerToken)}</td>
                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">{formatCurrency(listing.price)}</td>
-                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{sellerName}</td>
+                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{camouflageName(sellerName)}</td>
                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                         <button disabled={currentUser.id === listing.sellerId} className="bg-green-500 text-white px-4 py-1.5 rounded-md text-xs font-medium hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed">
-                                             Buy Now
+                                         <button
+                                            disabled={currentUser.id === listing.sellerId || currentUser.type === 'developer'}
+                                            className="bg-green-500 text-white px-4 py-1.5 rounded-md text-xs font-medium hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                        >
+                                            {currentUser.type === 'developer' ? 'Disabled' : 'Buy Now'}
                                          </button>
                                      </td>
                                  </tr>
@@ -2174,8 +2187,8 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
     const fee = numericInvestmentAmount * 0.015;
     const totalDebit = numericInvestmentAmount + fee;
     const progress = (project.amountRaised / project.fundingGoal) * 100;
-
-    const isDeveloperOwner = currentUser && currentUser.type === 'developer' && currentUser.id === project.developerId;
+    
+    const isDeveloper = currentUser && currentUser.type === 'developer';
 
     const handleAmountChange = (e) => {
         const value = e.target.value;
@@ -2272,9 +2285,9 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
                                      <button 
                                         onClick={() => setInvestmentModalOpen(true)} 
                                         className="w-full bg-indigo-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                        disabled={isDeveloperOwner || !investmentAmount || investmentAmount <= 0}
+                                        disabled={isDeveloper || !investmentAmount || numericInvestmentAmount <= 0}
                                      >
-                                        {isDeveloperOwner ? "Cannot invest in your own project" : "Invest Now"}
+                                        {isDeveloper ? "Developers cannot invest" : "Invest Now"}
                                      </button>
                                  </div>
                              </div>
@@ -2524,6 +2537,8 @@ const DeveloperDashboard = ({ currentUser, projects, portfolios, marketListings,
     ];
     
      const renderContent = () => {
+        const developerMarketplaceOnInvest = () => alert("Developers are not permitted to invest in projects or purchase from the secondary market.");
+
         switch (activeItem) {
             case 'Dashboard': return <DeveloperDashboardOverview currentUser={currentUser} projects={developerProjects} portfolios={portfolios} />;
             case 'My Projects':
@@ -2533,7 +2548,7 @@ const DeveloperDashboard = ({ currentUser, projects, portfolios, marketListings,
                 }
                 return <DeveloperMyProjects projects={developerProjects} onManageProject={setManagingProjectId} />;
             case 'Create New Project': return <DeveloperCreateProject />;
-            case 'Marketplace': return <InvestorMarketplace currentUser={currentUser} marketListings={marketListings} projects={projects} onInvest={() => alert("Developers cannot invest from this view.")} />;
+            case 'Marketplace': return <InvestorMarketplace currentUser={currentUser} marketListings={marketListings} projects={projects} onInvest={developerMarketplaceOnInvest} />;
             case 'Operational Wallet': return <DeveloperWallet currentUser={currentUser} />;
             case 'Settings': return <DeveloperSettings currentUser={currentUser} />;
             case 'Help & Support': return <HelpAndSupport currentUser={currentUser} />;
@@ -2824,8 +2839,16 @@ const DeveloperManageProject = ({ project, onBack }) => {
             </button>
             
             <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-                <h2 className="text-2xl font-bold text-gray-800">{project.title} ({project.tokenTicker})</h2>
-                <p className="text-gray-500">{project.location}</p>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-800">{project.title} ({project.tokenTicker})</h2>
+                        <p className="text-gray-500">{project.location}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-sm text-gray-500">Project APY</p>
+                        <p className="text-2xl font-bold text-green-600">{project.apy}%</p>
+                    </div>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -3750,6 +3773,11 @@ export default function App() {
     };
     
     const handleInvest = (projectId, amount) => {
+        if (currentUser && currentUser.type === 'developer') {
+            alert("Developers are not permitted to invest in projects.");
+            return;
+        }
+
         if (!amount || amount <= 0) {
             alert("Please enter a valid investment amount.");
             return;
@@ -3867,6 +3895,9 @@ export default function App() {
         </div>
     );
 }
+
+
+
 
 
 
