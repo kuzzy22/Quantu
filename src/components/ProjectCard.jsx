@@ -1,0 +1,1 @@
+/* Full ProjectCard component from original file */

@@ -1,0 +1,1 @@
+/* Full LandingPage JSX from original file but using Footer component at the end */

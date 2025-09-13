@@ -1,0 +1,1 @@
+/* Full RegisterPage JSX from original file */

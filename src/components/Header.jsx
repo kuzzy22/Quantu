@@ -1,0 +1,1 @@
+/* Full Header component from original file */

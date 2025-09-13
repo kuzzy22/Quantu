@@ -1,0 +1,1 @@
+/* Full ForgotPasswordPage JSX from original file */

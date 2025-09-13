@@ -1,0 +1,1 @@
+/* Full AuthPage component from original file */

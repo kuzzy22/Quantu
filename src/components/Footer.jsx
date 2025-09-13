@@ -1,0 +1,1 @@
+/* Extract footer from LandingPage, convert into standalone Footer component */
