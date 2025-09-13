@@ -1,4 +1,4 @@
-           import React, { useState, useEffect, useMemo } from 'react';
+             import React, { useState, useEffect, useMemo } from 'react';
 
 // --- MOCK DATA --- //
 // In a real application, this data would come from a secure backend and blockchain.
@@ -111,6 +111,28 @@ const initialProjects = [
         'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=2000',
     ],
     status: 'active',
+    projectWalletBalance: 0,
+  },
+  {
+    id: 4,
+    title: 'Ikeja Tech Hub',
+    tokenTicker: 'ITH',
+    tokenSupply: 300000,
+    developerId: 2,
+    developerName: 'Charles Babbage',
+    location: 'Ikeja, Lagos',
+    fundingGoal: 300000,
+    amountRaised: 0,
+    apy: 17,
+    term: 36,
+    description: 'A state-of-the-art co-working and innovation hub in the heart of Ikeja Computer Village. Designed to foster collaboration and growth for tech startups, offering flexible office spaces, event halls, and networking opportunities.',
+    imageUrl: 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=2000',
+    images: [
+        'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=2000',
+        'https://images.unsplash.com/photo-1521737852577-684822188716?q=80&w=2000',
+        'https://images.unsplash.com/photo-1556742502-ec7c0e9f34b1?q=80&w=2000',
+    ],
+    status: 'pending', // Submitted for admin approval
     projectWalletBalance: 0,
   },
 ];
@@ -3571,7 +3593,7 @@ const AdminSettings = () => {
     );
 };
 
-const AdminDashboard = ({ currentUser, projects, users, onLogout, totalBalance }) => {
+const AdminDashboard = ({ currentUser, projects, users, onLogout, totalBalance, onUpdateProjectStatus }) => {
      const [activeItem, setActiveItem] = useState('Dashboard');
 
     const sidebarItems = [
@@ -3585,7 +3607,7 @@ const AdminDashboard = ({ currentUser, projects, users, onLogout, totalBalance }
      const renderContent = () => {
         switch (activeItem) {
             case 'Dashboard': return <AdminDashboardOverview users={users} projects={projects} />;
-            case 'Project Approvals': return <AdminProjectApprovals projects={projects} />;
+            case 'Project Approvals': return <AdminProjectApprovals projects={projects} onUpdateProjectStatus={onUpdateProjectStatus} />;
             case 'User Management': return <AdminUserManagement users={users} />;
             case 'Compliance': return <AdminCompliance users={users} />;
             case 'Settings': return <AdminSettings />;
@@ -3600,38 +3622,203 @@ const AdminDashboard = ({ currentUser, projects, users, onLogout, totalBalance }
     );
 };
 
-const AdminProjectApprovals = ({ projects }) => {
+const AdminProjectApprovals = ({ projects, onUpdateProjectStatus }) => {
+    const [viewingProject, setViewingProject] = useState(null);
+    const [activeSubTab, setActiveSubTab] = useState('Pending');
+
+    if (viewingProject) {
+        return (
+            <AdminProjectDetails 
+                project={viewingProject}
+                onUpdateProjectStatus={onUpdateProjectStatus}
+                onBack={() => setViewingProject(null)}
+            />
+        );
+    }
+    
     const pendingProjects = projects.filter(p => p.status === 'pending');
+    const approvedProjects = projects.filter(p => ['active', 'funded', 'completed'].includes(p.status));
+
+    const renderPendingTable = () => (
+        <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                    <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Developer</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Funding Goal</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                     {pendingProjects.map(project => (
+                         <tr key={project.id}>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{project.title} ({project.tokenTicker})</td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{project.developerName}</td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatCurrency(project.fundingGoal)}</td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                 <button onClick={() => setViewingProject(project)} className="text-indigo-600 hover:text-indigo-900">View Details</button>
+                             </td>
+                         </tr>
+                    ))}
+                    {pendingProjects.length === 0 && (
+                         <tr><td colSpan="4" className="text-center py-8 text-gray-500">No projects are pending approval.</td></tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+    );
+
+    const renderApprovedTable = () => (
+         <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                    <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Developer</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Raised</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                     {approvedProjects.map(project => (
+                         <tr key={project.id}>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{project.title} ({project.tokenTicker})</td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{project.developerName}</td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatCurrency(project.amountRaised)} / {formatCurrency(project.fundingGoal)}</td>
+                             <td className="px-6 py-4 whitespace-nowrap">
+                                 <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                     project.status === 'active' ? 'bg-green-100 text-green-800' :
+                                     project.status === 'funded' ? 'bg-blue-100 text-blue-800' :
+                                     'bg-gray-100 text-gray-800'
+                                 }`}>
+                                     {project.status}
+                                 </span>
+                             </td>
+                         </tr>
+                    ))}
+                    {approvedProjects.length === 0 && (
+                         <tr><td colSpan="4" className="text-center py-8 text-gray-500">No projects have been approved yet.</td></tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+    );
+
     return (
         <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Pending Project Approvals</h2>
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Developer</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Funding Goal</th>
-                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                         {pendingProjects.map(project => (
-                             <tr key={project.id}>
-                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{project.title} ({project.tokenTicker})</td>
-                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{project.developerName}</td>
-                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatCurrency(project.fundingGoal)}</td>
-                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                                     <button className="bg-green-500 text-white px-3 py-1.5 rounded-md text-xs hover:bg-green-600">Approve</button>
-                                     <button className="bg-red-500 text-white px-3 py-1.5 rounded-md text-xs hover:bg-red-600">Reject</button>
-                                 </td>
-                             </tr>
-                        ))}
-                        {pendingProjects.length === 0 && (
-                             <tr><td colSpan="4" className="text-center py-8 text-gray-500">No projects are pending approval.</td></tr>
-                        )}
-                    </tbody>
-                </table>
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Project Approvals</h2>
+            <div className="mb-6 border-b border-gray-200">
+                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                    <button
+                        onClick={() => setActiveSubTab('Pending')}
+                        className={`${activeSubTab === 'Pending' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        Pending Approvals
+                        {pendingProjects.length > 0 && <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">{pendingProjects.length}</span>}
+                    </button>
+                    <button
+                        onClick={() => setActiveSubTab('Approved')}
+                        className={`${activeSubTab === 'Approved' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                    >
+                        Approved Projects
+                    </button>
+                </nav>
+            </div>
+
+            {activeSubTab === 'Pending' ? renderPendingTable() : renderApprovedTable()}
+        </div>
+    );
+};
+
+const AdminProjectDetails = ({ project, onUpdateProjectStatus, onBack }) => {
+    const [mainImage, setMainImage] = useState(project.images[0]);
+
+    const handleApprove = () => {
+        onUpdateProjectStatus(project.id, 'active');
+        onBack();
+    };
+    
+    const handleReject = () => {
+        onUpdateProjectStatus(project.id, 'rejected');
+        onBack();
+    };
+
+    return (
+        <div>
+            <button onClick={onBack} className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-6">
+                <ArrowLeftIcon className="w-4 h-4 mr-2" />
+                Back to Approval List
+            </button>
+
+            <div className="bg-white p-8 rounded-lg shadow-xl">
+                {/* Header */}
+                <div className="border-b pb-4 mb-6">
+                    <h2 className="text-3xl font-bold text-gray-900">{project.title}</h2>
+                    <p className="text-md text-gray-500">Submitted by: <span className="font-semibold">{project.developerName}</span></p>
+                </div>
+
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Left Column: Visuals & Description */}
+                    <div>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-4">Project Visuals</h3>
+                        <img src={mainImage} alt="Main project view" className="w-full h-80 object-cover rounded-lg shadow-md mb-4"/>
+                        <div className="flex space-x-2">
+                            {project.images.map((img, index) => (
+                                <img 
+                                    key={index}
+                                    src={img} 
+                                    alt={`Thumbnail ${index + 1}`}
+                                    className={`w-20 h-20 object-cover rounded-md cursor-pointer border-2 transition-all ${mainImage === img ? 'border-indigo-500' : 'border-transparent hover:border-gray-300'}`}
+                                    onClick={() => setMainImage(img)}
+                                />
+                            ))}
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-800 mt-8 mb-4">Project Description</h3>
+                        <p className="text-gray-600">{project.description}</p>
+                    </div>
+
+                    {/* Right Column: Financials & Documents */}
+                    <div>
+                        <div className="bg-gray-50 p-6 rounded-lg border">
+                            <h3 className="text-xl font-semibold text-gray-800 mb-4">Financial & Tokenomics Details</h3>
+                            <div className="space-y-3">
+                                <div className="flex justify-between text-sm"><span className="text-gray-600">Funding Goal:</span><span className="font-bold">{formatCurrency(project.fundingGoal)}</span></div>
+                                <div className="flex justify-between text-sm"><span className="text-gray-600">Proposed APY:</span><span className="font-bold text-green-600">{project.apy}%</span></div>
+                                <div className="flex justify-between text-sm"><span className="text-gray-600">Project Term:</span><span className="font-bold">{project.term} Months</span></div>
+                                <div className="flex justify-between text-sm"><span className="text-gray-600">Token Supply:</span><span className="font-bold">{project.tokenSupply.toLocaleString()}</span></div>
+                                <div className="flex justify-between text-sm"><span className="text-gray-600">Token Ticker:</span><span className="font-bold font-mono bg-gray-200 px-2 py-0.5 rounded">{project.tokenTicker}</span></div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8">
+                             <h3 className="text-xl font-semibold text-gray-800 mb-4">Submitted Documents</h3>
+                             <div className="space-y-3">
+                                 <a href="#" className="flex items-center p-3 bg-white border rounded-md hover:bg-gray-50 transition-colors">
+                                    <PaperclipIcon className="w-5 h-5 mr-3 text-gray-500"/>
+                                    <span className="font-medium text-indigo-600">Project_Proposal.pdf</span>
+                                    <span className="ml-auto text-sm text-gray-500">Download</span>
+                                 </a>
+                                  <a href="#" className="flex items-center p-3 bg-white border rounded-md hover:bg-gray-50 transition-colors">
+                                    <PaperclipIcon className="w-5 h-5 mr-3 text-gray-500"/>
+                                    <span className="font-medium text-indigo-600">Legal_Documents_Archive.zip</span>
+                                     <span className="ml-auto text-sm text-gray-500">Download</span>
+                                 </a>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Action Footer */}
+                <div className="border-t mt-8 pt-6 flex justify-end space-x-4">
+                    <button onClick={handleReject} className="bg-red-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-red-700 transition-colors">
+                        Reject Project
+                    </button>
+                    <button onClick={handleApprove} className="bg-green-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-700 transition-colors">
+                        Approve Project
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -3708,6 +3895,15 @@ export default function App() {
     const handleLogout = () => {
         setCurrentUser(null);
         setPage('landing');
+    };
+
+    const handleUpdateProjectStatus = (projectId, newStatus) => {
+        setProjects(prevProjects =>
+            prevProjects.map(p =>
+                p.id === projectId ? { ...p, status: newStatus } : p
+            )
+        );
+        alert(`Project ID ${projectId} has been updated to "${newStatus}".`);
     };
 
     const handleClaimApy = (tokenId, userId) => {
@@ -3861,7 +4057,7 @@ export default function App() {
             switch (currentUser.type) {
                 case 'investor': return <InvestorDashboard currentUser={currentUser} projects={projects} portfolios={portfolios} marketListings={marketListings} onLogout={handleLogout} onClaimApy={handleClaimApy} onListToken={handleListToken} onInvest={handleInvest} totalBalance={totalBalance} />;
                 case 'developer': return <DeveloperDashboard currentUser={currentUser} projects={projects} portfolios={portfolios} marketListings={marketListings} onLogout={handleLogout} totalBalance={totalBalance} />;
-                case 'admin': return <AdminDashboard currentUser={currentUser} projects={projects} users={users} onLogout={handleLogout} totalBalance={totalBalance} />;
+                case 'admin': return <AdminDashboard currentUser={currentUser} projects={projects} users={users} onLogout={handleLogout} totalBalance={totalBalance} onUpdateProjectStatus={handleUpdateProjectStatus} />;
                 default:
                     // If user type is unknown, log them out.
                     setCurrentUser(null);
@@ -3891,6 +4087,11 @@ export default function App() {
         </div>
     );
 }
+
+
+
+
+
 
 
 
