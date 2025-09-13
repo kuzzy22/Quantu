@@ -1,4 +1,5 @@
-      import React, { useState, useEffect, useMemo } from 'react';
+       import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 
 // --- MOCK DATA --- //
 // In a real application, this data would come from a secure backend and blockchain.
@@ -1734,7 +1735,7 @@ const InvestorMarketplace = ({ currentUser, marketListings, projects, onInvest }
             case 'Properties':
                 return <PropertiesMarket projects={projects} currentUser={currentUser} onInvest={onInvest} />;
             case 'Currency Exchange':
-                return <CurrencyExchange />;
+                return <MarketplaceCurrencyExchange currentUser={currentUser} updateWallet={updateWallet} addTransaction={addTransaction} />;
             default:
                 return null;
         }
@@ -2379,95 +2380,142 @@ const InvestmentModal = ({ isOpen, onClose, onConfirm, project, details }) => {
 };
 
 
-const CurrencyExchange = () => {
+
+const MarketplaceCurrencyExchange = ({ currentUser, updateWallet, addTransaction }) => {
     const USD_NGN_RATE = 1500;
-    const [ngnAmount, setNgnAmount] = useState('150,000');
-    const [cryptoAmount, setCryptoAmount] = useState('100.00');
+    const [ngnAmount, setNgnAmount] = useState('');
+    const [cryptoAmount, setCryptoAmount] = useState('');
     const [selectedCrypto, setSelectedCrypto] = useState('USDT');
-    const [activeField, setActiveField] = useState('NGN'); // 'NGN' or 'CRYPTO'
+    const [activeField, setActiveField] = useState(null);
+    const [swapDirection, setSwapDirection] = useState('ngn-to-crypto');
 
-    // Recalculate crypto when NGN changes
+    const ngnBalance = currentUser?.wallet?.ngn || 0;
+    const cryptoBalance = currentUser?.wallet?.[selectedCrypto.toLowerCase()] || 0;
+
     useEffect(() => {
-        if (activeField === 'NGN') {
+        if (activeField === 'NGN' || activeField === null) {
             const numericNgn = parseFloat(ngnAmount.replace(/,/g, '')) || 0;
-            if (numericNgn > 0) {
-                setCryptoAmount((numericNgn / USD_NGN_RATE).toFixed(2));
-            } else {
-                setCryptoAmount('0.00');
-            }
+            setCryptoAmount((numericNgn / USD_NGN_RATE).toFixed(2));
         }
-    }, [ngnAmount, activeField]);
+    }, [ngnAmount, selectedCrypto]);
 
-    // Recalculate NGN when crypto changes
     useEffect(() => {
-        if (activeField === 'CRYPTO') {
+        if (activeField === 'CRYPTO' || activeField === null) {
             const numericCrypto = parseFloat(cryptoAmount) || 0;
-            if (numericCrypto > 0) {
-                const newNgn = numericCrypto * USD_NGN_RATE;
-                setNgnAmount(newNgn.toLocaleString('en-US', { maximumFractionDigits: 0 }));
-            } else {
-                setNgnAmount('0');
-            }
+            setNgnAmount((numericCrypto * USD_NGN_RATE).toLocaleString('en-US', { maximumFractionDigits: 0 }));
         }
-    }, [cryptoAmount, selectedCrypto, activeField]);
+    }, [cryptoAmount, selectedCrypto]);
 
     const handleNgnChange = (e) => {
         setActiveField('NGN');
-        const value = e.target.value;
-        const numericString = value.replace(/[^0-9]/g, '');
-        setNgnAmount(numericString ? parseInt(numericString, 10).toLocaleString('en-US') : '');
+        const value = e.target.value.replace(/[^0-9]/g, '');
+        setNgnAmount(value ? parseInt(value, 10).toLocaleString('en-US') : '');
     };
 
     const handleCryptoChange = (e) => {
         setActiveField('CRYPTO');
         let value = e.target.value.replace(/[^0-9.]/g, '');
         const parts = value.split('.');
-        if (parts.length > 2) {
-            value = parts[0] + '.' + parts.slice(1).join('');
-        }
+        if (parts.length > 2) value = parts[0] + '.' + parts.slice(1).join('');
         setCryptoAmount(value);
+    };
+
+    const handleSwap = () => {
+        setSwapDirection(prev => prev === 'ngn-to-crypto' ? 'crypto-to-ngn' : 'ngn-to-crypto');
+        setActiveField(null);
+    };
+
+    const handleConvert = () => {
+        const numericNgn = parseFloat(ngnAmount.replace(/,/g, '')) || 0;
+        const numericCrypto = parseFloat(cryptoAmount) || 0;
+        const feeMultiplier = 0.995; // 0.5% fee
+
+        let transaction = {
+            id: Date.now(),
+            type: 'exchange',
+            direction: swapDirection,
+            crypto: selectedCrypto,
+            ngnAmount: numericNgn,
+            cryptoAmount: numericCrypto,
+            timestamp: new Date().toISOString(),
+        };
+
+        if (swapDirection === 'ngn-to-crypto') {
+            if (numericNgn > ngnBalance) {
+                alert('Insufficient NGN balance');
+                return;
+            }
+            updateWallet({
+                ngn: ngnBalance - numericNgn,
+                [selectedCrypto.toLowerCase()]: cryptoBalance + (numericCrypto * feeMultiplier)
+            });
+            transaction.result = `${(numericCrypto * feeMultiplier).toFixed(2)} ${selectedCrypto}`;
+        } else {
+            if (numericCrypto > cryptoBalance) {
+                alert(`Insufficient ${selectedCrypto} balance`);
+                return;
+            }
+            updateWallet({
+                ngn: ngnBalance + (numericNgn * feeMultiplier),
+                [selectedCrypto.toLowerCase()]: cryptoBalance - numericCrypto
+            });
+            transaction.result = `₦${(numericNgn * feeMultiplier).toLocaleString()}`;
+        }
+
+        addTransaction(transaction);
+        alert(`Exchange complete: ${transaction.result}`);
+        setNgnAmount('');
+        setCryptoAmount('');
     };
 
     return (
         <div className="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Exchange NGN & Crypto</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2 text-center">Marketplace Exchange</h2>
+            <p className="text-center text-gray-500 mb-4">
+                {swapDirection === 'ngn-to-crypto' ? 'NGN → Crypto' : 'Crypto → NGN'}
+            </p>
             <div className="space-y-4">
-                <div className="p-4 border rounded-lg">
-                     <label className="text-sm font-medium text-gray-500">NGN</label>
-                    <input 
-                        type="text" 
+                <motion.div className="p-4 border rounded-lg" animate={{ opacity: swapDirection === 'ngn-to-crypto' ? 1 : 0.6 }}>
+                    <label className="text-sm font-medium text-gray-500">NGN (Balance: ₦{ngnBalance.toLocaleString()})</label>
+                    <input
+                        type="text"
                         value={ngnAmount}
                         onChange={handleNgnChange}
-                        onFocus={() => setActiveField('NGN')}
                         className="w-full text-3xl font-bold border-0 p-0 focus:ring-0 bg-transparent"
                     />
-                </div>
+                </motion.div>
                 <div className="flex justify-center py-0">
-                    <RepeatIcon className="w-8 h-8 text-gray-400"/>
+                    <motion.button
+                        onClick={handleSwap}
+                        whileTap={{ scale: 0.9, rotate: 180 }}
+                        className="p-3 rounded-full bg-gray-100 hover:bg-gray-200 shadow"
+                        aria-label="Swap direction"
+                    >
+                        ⇅
+                    </motion.button>
                 </div>
-                <div className="p-4 border rounded-lg">
-                    <label className="text-sm font-medium text-gray-500">Crypto</label>
-                     <div className="flex items-center">
-                        <input 
-                            type="text" 
-                            value={cryptoAmount} 
+                <motion.div className="p-4 border rounded-lg" animate={{ opacity: swapDirection === 'crypto-to-ngn' ? 1 : 0.6 }}>
+                    <label className="text-sm font-medium text-gray-500">{selectedCrypto} (Balance: {cryptoBalance.toFixed(2)})</label>
+                    <div className="flex items-center">
+                        <input
+                            type="text"
+                            value={cryptoAmount}
                             onChange={handleCryptoChange}
-                            onFocus={() => setActiveField('CRYPTO')}
-                            className="w-full text-3xl font-bold border-0 p-0 focus:ring-0 bg-transparent" 
+                            className="w-full text-3xl font-bold border-0 p-0 focus:ring-0 bg-transparent"
                         />
                         <select value={selectedCrypto} onChange={(e) => setSelectedCrypto(e.target.value)} className="text-xl font-semibold border-0 focus:ring-0 bg-gray-100 rounded-md p-2">
                             <option>USDT</option>
                             <option>USDC</option>
                         </select>
                     </div>
-                </div>
+                </motion.div>
                 <div className="pt-2 text-sm text-gray-600 text-center">
                     <p>Exchange Rate: 1 {selectedCrypto} ≈ {USD_NGN_RATE.toLocaleString()} NGN</p>
                     <p>Fee: 0.5%</p>
                 </div>
                 <div className="pt-2">
                     <button
-                        onClick={() => alert('Currency swap initiated!')}
+                        onClick={handleConvert}
                         className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700"
                     >
                         Convert
@@ -2478,53 +2526,6 @@ const CurrencyExchange = () => {
     );
 };
 
-
-// --- DEVELOPER DASHBOARD --- //
-const DeveloperDashboard = ({ currentUser, projects, portfolios, marketListings, onLogout, totalBalance }) => {
-    const [activeItem, setActiveItem] = useState('Dashboard');
-    const [managingProjectId, setManagingProjectId] = useState(null);
-
-    const developerProjects = projects.filter(p => p.developerId === currentUser.id);
-
-    const sidebarItems = [
-        { name: 'Dashboard', icon: <EyeIcon className="h-5 w-5" /> },
-        { name: 'My Projects', icon: <BuildingIcon className="h-5 w-5" /> },
-        { name: 'Create New Project', icon: <CheckCircleIcon className="h-5 w-5" /> },
-        { name: 'Marketplace', icon: <TrendingUpIcon className="h-5 w-5" /> },
-        { name: 'Operational Wallet', icon: <WalletIcon className="h-5 w-5" /> },
-        { name: 'Settings', icon: <SettingsIcon className="h-5 w-5" /> },
-        { name: 'Help & Support', icon: <LifeBuoyIcon className="h-5 w-5" /> },
-    ];
-    
-     const renderContent = () => {
-        switch (activeItem) {
-            case 'Dashboard': return <DeveloperDashboardOverview currentUser={currentUser} projects={developerProjects} portfolios={portfolios} />;
-            case 'My Projects':
-                const projectToManage = projects.find(p => p.id === managingProjectId);
-                if (projectToManage) {
-                    return <DeveloperManageProject project={projectToManage} onBack={() => setManagingProjectId(null)} />;
-                }
-                return <DeveloperMyProjects projects={developerProjects} onManageProject={setManagingProjectId} />;
-            case 'Create New Project': return <DeveloperCreateProject />;
-            case 'Marketplace': return <InvestorMarketplace currentUser={currentUser} marketListings={marketListings} projects={projects} onInvest={() => alert("Developers cannot invest from this view.")} />;
-            case 'Operational Wallet': return <DeveloperWallet currentUser={currentUser} />;
-            case 'Settings': return <DeveloperSettings currentUser={currentUser} />;
-            case 'Help & Support': return <HelpAndSupport currentUser={currentUser} />;
-            default: return <DeveloperDashboardOverview currentUser={currentUser} projects={developerProjects} portfolios={portfolios} />;
-        }
-    };
-    
-    // Reset management view when switching sidebar tabs
-    useEffect(() => {
-        setManagingProjectId(null);
-    }, [activeItem]);
-
-    return (
-        <DashboardLayout currentUser={currentUser} sidebarItems={sidebarItems} activeItem={activeItem} setActiveItem={setActiveItem} onLogout={onLogout} totalBalance={totalBalance}>
-            {renderContent()}
-        </DashboardLayout>
-    );
-};
 
 const DeveloperDashboardOverview = ({ currentUser, projects, portfolios }) => {
     const stats = useMemo(() => {
@@ -3634,7 +3635,21 @@ export default function App() {
     const [portfolios, setPortfolios] = useState(initialPortfolios);
     const [marketListings, setMarketListings] = useState(initialMarketListings);
 
-    const USD_NGN_RATE = 1500;
+    const [transactions, setTransactions] = useState([]);
+
+    const addTransaction = (tx) => setTransactions(prev => [tx, ...prev]);
+
+    const updateWallet = (updates) => {
+        // Merge wallet updates into users and currentUser
+        setUsers(prev => {
+            if (!currentUser) return prev;
+            const existing = prev[currentUser.email] || currentUser;
+            const updated = { ...existing, wallet: { ...existing.wallet, ...updates } };
+            return { ...prev, [currentUser.email]: updated };
+        });
+        // Also update the standalone currentUser object
+        setCurrentUser(prevCurr => prevCurr ? { ...prevCurr, wallet: { ...prevCurr.wallet, ...updates } } : prevCurr);
+    };const USD_NGN_RATE = 1500;
 
     const totalBalance = useMemo(() => {
         if (!currentUser || !currentUser.wallet) {
@@ -3840,6 +3855,7 @@ export default function App() {
         </div>
     );
 }
+
 
 
 
