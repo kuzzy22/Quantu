@@ -442,8 +442,39 @@ const LandingPage = ({ setPage, projects }) => {
                     </div>
                 </div>
 
+                {/* HOW IT WORKS: DUAL TOKEN SYSTEM */}
+                <div id="how-it-works" className="py-16 bg-gray-50">
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="text-center mb-12">
+                            <h2 className="text-3xl font-bold text-gray-800">Unlock Liquidity with Our Dual-Token System</h2>
+                            <p className="mt-2 text-lg text-gray-600">Every investment provides you with two distinct types of tokens, balancing long-term growth with immediate flexibility.</p>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+                            <div className="bg-white p-8 rounded-lg shadow-md border-l-4 border-blue-500">
+                                <div className="flex items-center mb-4">
+                                    <div className="p-2 bg-blue-100 rounded-full mr-4">
+                                        <ShieldCheckIcon className="w-6 h-6 text-blue-600"/>
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-gray-900">Security Tokens</h3>
+                                </div>
+                                <p className="text-gray-600">This token represents your core ownership in the property. It is locked for the project's term and generates your monthly APY returns. Think of it as your proof of ownership and your key to long-term wealth building.</p>
+                            </div>
+                            <div className="bg-white p-8 rounded-lg shadow-md border-l-4 border-purple-500">
+                                <div className="flex items-center mb-4">
+                                    <div className="p-2 bg-purple-100 rounded-full mr-4">
+                                        <TrendingUpIcon className="w-6 h-6 text-purple-600"/>
+                                    </div>
+                                    <h3 className="text-2xl font-bold text-gray-900">Market Tokens</h3>
+                                </div>
+                                <p className="text-gray-600">Paired 1:1 with your Security Tokens, these are designed for liquidity. You can sell your Market Tokens to other investors on our Secondary Market at any time, allowing you to exit your position before the project's lockup period ends.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
                 {/* Featured Projects Section */}
-                <div id="featured-projects" className="py-16 bg-gray-50">
+                <div id="featured-projects" className="py-16 bg-white">
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
                         <div className="text-center mb-12">
                             <h2 className="text-3xl font-bold text-gray-800">Featured Investment Opportunities</h2>
@@ -3897,6 +3928,7 @@ export default function App() {
         </div>
     );
 }
+
 
 
 
