@@ -2381,89 +2381,116 @@ const InvestmentModal = ({ isOpen, onClose, onConfirm, project, details }) => {
 
 const CurrencyExchange = () => {
     const USD_NGN_RATE = 1500;
-    const [ngnAmount, setNgnAmount] = useState('150,000');
-    const [cryptoAmount, setCryptoAmount] = useState('100.00');
-    const [selectedCrypto, setSelectedCrypto] = useState('USDT');
-    const [activeField, setActiveField] = useState('NGN'); // 'NGN' or 'CRYPTO'
+    const [fromAmount, setFromAmount] = useState('150,000');
+    const [toAmount, setToAmount] = useState('100.00');
+    const [fromCurrency, setFromCurrency] = useState('NGN');
+    const [toCurrency, setToCurrency] = useState('USDT');
 
-    // Recalculate crypto when NGN changes
-    useEffect(() => {
-        if (activeField === 'NGN') {
-            const numericNgn = parseFloat(ngnAmount.replace(/,/g, '')) || 0;
-            if (numericNgn > 0) {
-                setCryptoAmount((numericNgn / USD_NGN_RATE).toFixed(2));
-            } else {
-                setCryptoAmount('0.00');
-            }
-        }
-    }, [ngnAmount, activeField]);
-
-    // Recalculate NGN when crypto changes
-    useEffect(() => {
-        if (activeField === 'CRYPTO') {
-            const numericCrypto = parseFloat(cryptoAmount) || 0;
-            if (numericCrypto > 0) {
-                const newNgn = numericCrypto * USD_NGN_RATE;
-                setNgnAmount(newNgn.toLocaleString('en-US', { maximumFractionDigits: 0 }));
-            } else {
-                setNgnAmount('0');
-            }
-        }
-    }, [cryptoAmount, selectedCrypto, activeField]);
-
-    const handleNgnChange = (e) => {
-        setActiveField('NGN');
-        const value = e.target.value;
-        const numericString = value.replace(/[^0-9]/g, '');
-        setNgnAmount(numericString ? parseInt(numericString, 10).toLocaleString('en-US') : '');
+    const handleSwapCurrencies = () => {
+        const oldFromAmount = fromAmount;
+        setFromAmount(toAmount);
+        setToAmount(oldFromAmount);
+        
+        const oldFromCurrency = fromCurrency;
+        setFromCurrency(toCurrency);
+        setToCurrency(oldFromCurrency);
     };
 
-    const handleCryptoChange = (e) => {
-        setActiveField('CRYPTO');
-        let value = e.target.value.replace(/[^0-9.]/g, '');
-        const parts = value.split('.');
-        if (parts.length > 2) {
-            value = parts[0] + '.' + parts.slice(1).join('');
+    useEffect(() => {
+        const numericFrom = parseFloat(String(fromAmount).replace(/,/g, '')) || 0;
+        if (numericFrom === 0) {
+            setToAmount('');
+            return;
         }
-        setCryptoAmount(value);
+
+        let newToAmount;
+        if (fromCurrency === 'NGN') { // NGN -> Crypto
+            newToAmount = (numericFrom / USD_NGN_RATE).toFixed(2);
+        } else { // Crypto -> NGN
+            newToAmount = numericFrom * USD_NGN_RATE;
+            newToAmount = newToAmount.toLocaleString('en-US', {maximumFractionDigits: 0});
+        }
+        setToAmount(newToAmount);
+
+    }, [fromAmount, fromCurrency, toCurrency]);
+
+    const handleFromAmountChange = (e) => {
+        let value = e.target.value;
+        if (fromCurrency === 'NGN') {
+            const numericString = value.replace(/[^0-9]/g, '');
+            setFromAmount(numericString ? parseInt(numericString, 10).toLocaleString('en-US') : '');
+        } else { // It's Crypto
+            let cleanValue = value.replace(/[^0-9.]/g, '');
+            const parts = cleanValue.split('.');
+            if (parts.length > 2) {
+                cleanValue = parts[0] + '.' + parts.slice(1).join('');
+            }
+            setFromAmount(cleanValue);
+        }
+    };
+    
+    const renderCurrencySelector = (currency, setCurrency) => {
+        const isCrypto = ['USDT', 'USDC'].includes(currency);
+        
+        if (isCrypto) {
+            return (
+                 <select 
+                    value={currency} 
+                    onChange={(e) => setCurrency(e.target.value)} 
+                    className="text-xl font-semibold border-0 focus:ring-0 bg-gray-100 rounded-md p-2"
+                >
+                    <option>USDT</option>
+                    <option>USDC</option>
+                </select>
+            );
+        }
+        return <span className="text-xl font-semibold bg-gray-100 rounded-md py-2 px-4">{currency}</span>
     };
 
     return (
         <div className="bg-white p-8 rounded-lg shadow-md max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Exchange NGN & Crypto</h2>
-            <div className="space-y-4">
+            <div className="space-y-2">
+                {/* From Field */}
                 <div className="p-4 border rounded-lg">
-                     <label className="text-sm font-medium text-gray-500">NGN</label>
-                    <input 
-                        type="text" 
-                        value={ngnAmount}
-                        onChange={handleNgnChange}
-                        onFocus={() => setActiveField('NGN')}
-                        className="w-full text-3xl font-bold border-0 p-0 focus:ring-0 bg-transparent"
-                    />
-                </div>
-                <div className="flex justify-center py-0">
-                    <RepeatIcon className="w-8 h-8 text-gray-400"/>
-                </div>
-                <div className="p-4 border rounded-lg">
-                    <label className="text-sm font-medium text-gray-500">Crypto</label>
+                     <label className="text-sm font-medium text-gray-500">You Pay</label>
                      <div className="flex items-center">
                         <input 
                             type="text" 
-                            value={cryptoAmount} 
-                            onChange={handleCryptoChange}
-                            onFocus={() => setActiveField('CRYPTO')}
-                            className="w-full text-3xl font-bold border-0 p-0 focus:ring-0 bg-transparent" 
+                            value={fromAmount}
+                            onChange={handleFromAmountChange}
+                            className="w-full text-3xl font-bold border-0 p-0 focus:ring-0 bg-transparent"
+                            placeholder="0"
                         />
-                        <select value={selectedCrypto} onChange={(e) => setSelectedCrypto(e.target.value)} className="text-xl font-semibold border-0 focus:ring-0 bg-gray-100 rounded-md p-2">
-                            <option>USDT</option>
-                            <option>USDC</option>
-                        </select>
+                        {renderCurrencySelector(fromCurrency, setFromCurrency)}
                     </div>
                 </div>
+                
+                {/* Swap Button */}
+                <div className="flex justify-center py-2">
+                    <button onClick={handleSwapCurrencies} className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-indigo-600">
+                        <RepeatIcon className="w-6 h-6"/>
+                    </button>
+                </div>
+
+                {/* To Field */}
+                <div className="p-4 border rounded-lg bg-gray-50">
+                    <label className="text-sm font-medium text-gray-500">You Receive (approx.)</label>
+                     <div className="flex items-center">
+                        <input 
+                            type="text" 
+                            value={toAmount} 
+                            readOnly
+                            className="w-full text-3xl font-bold border-0 p-0 focus:ring-0 bg-transparent text-gray-700"
+                            placeholder="0"
+                        />
+                        {renderCurrencySelector(toCurrency, setToCurrency)}
+                    </div>
+                </div>
+
                 <div className="pt-2 text-sm text-gray-600 text-center">
-                    <p>Exchange Rate: 1 {selectedCrypto} ≈ {USD_NGN_RATE.toLocaleString()} NGN</p>
-                    <p>Fee: 0.5%</p>
+                    <p>Exchange Rate: 1 {fromCurrency === 'NGN' ? toCurrency : fromCurrency} ≈ {USD_NGN_RATE.toLocaleString()} {fromCurrency === 'NGN' ? fromCurrency : toCurrency}</p>
+                    <p>Fee: 0.5% (included in rate)</p>
                 </div>
                 <div className="pt-2">
                     <button
@@ -3840,8 +3867,6 @@ export default function App() {
         </div>
     );
 }
-
-
 
 
 
