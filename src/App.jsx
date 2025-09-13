@@ -1,4 +1,4 @@
-       import React, { useState, useEffect, useMemo } from 'react';
+      import React, { useState, useEffect, useMemo } from 'react';
 
 // --- MOCK DATA --- //
 // In a real application, this data would come from a secure backend and blockchain.
@@ -266,7 +266,7 @@ const LockupTimer = ({ endDate }) => {
         }, 1000);
 
         return () => clearTimeout(timer);
-    });
+    }, [endDate]);
 
     if (!Object.keys(timeLeft).length) {
         return <span className="text-green-600 font-semibold">Lockup Ended</span>;
@@ -3681,7 +3681,7 @@ export default function App() {
             // Update user's wallet
             const userToUpdate = users[currentUser.email];
             if (userToUpdate) {
-                userToUpdate.wallet.usd += monthlyApyAmount;
+                userToUpdate.wallet.usdt += monthlyApyAmount;
                 setUsers(prevUsers => ({...prevUsers, [currentUser.email]: userToUpdate}));
             }
             
@@ -3840,7 +3840,6 @@ export default function App() {
         </div>
     );
 }
-
 
 
 
