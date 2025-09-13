@@ -1,4 +1,4 @@
-         import React, { useState, useEffect, useMemo } from 'react';
+           import React, { useState, useEffect, useMemo } from 'react';
 
 // --- MOCK DATA --- //
 // In a real application, this data would come from a secure backend and blockchain.
@@ -238,7 +238,7 @@ const MenuIcon = (props) => (
 );
 
 const BellIcon = (props) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
 );
 
 
@@ -261,11 +261,11 @@ const LockupTimer = ({ endDate }) => {
     const [timeLeft, setTimeLeft] = useState(calculateTimeLeft());
 
     useEffect(() => {
-        const timer = setTimeout(() => {
+        const timer = setInterval(() => {
             setTimeLeft(calculateTimeLeft());
         }, 1000);
 
-        return () => clearTimeout(timer);
+        return () => clearInterval(timer);
     }, [endDate]);
 
     if (!Object.keys(timeLeft).length) {
@@ -2768,30 +2768,7 @@ const UpcomingApyCard = ({ projects }) => {
 };
 
 const LiveFundingCard = ({ project }) => {
-    const [currentAmount, setCurrentAmount] = useState(project.amountRaised);
-    const [recentInvestments, setRecentInvestments] = useState([]);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            if (currentAmount < project.fundingGoal) {
-                const newInvestment = Math.floor(Math.random() * 4501) + 500; // Random investment between 500 and 5000
-                
-                setCurrentAmount(prevAmount => {
-                    const nextAmount = prevAmount + newInvestment;
-                    return nextAmount > project.fundingGoal ? project.fundingGoal : nextAmount;
-                });
-
-                setRecentInvestments(prev => [
-                    { id: Date.now(), amount: newInvestment },
-                    ...prev.slice(0, 4) // Keep only the last 5 investments
-                ]);
-            }
-        }, 3500); // New investment every 3.5 seconds
-
-        return () => clearInterval(interval);
-    }, [currentAmount, project.fundingGoal]);
-
-    const progress = (currentAmount / project.fundingGoal) * 100;
+    const progress = (project.amountRaised / project.fundingGoal) * 100;
 
     return (
         <div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
@@ -2800,11 +2777,11 @@ const LiveFundingCard = ({ project }) => {
             
             <div className="mb-4">
                  <div className="flex justify-between text-sm text-gray-600 font-medium mb-1">
-                    <span>{formatCurrency(currentAmount)}</span>
+                    <span>{formatCurrency(project.amountRaised)}</span>
                     <span>{formatCurrency(project.fundingGoal)}</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
-                    <div className="bg-green-500 h-4 rounded-full text-center text-white text-xs font-bold transition-all duration-500 ease-out flex items-center justify-center" style={{ width: `${progress}%` }}>
+                    <div className="bg-green-500 h-4 rounded-full text-center text-white text-xs font-bold flex items-center justify-center" style={{ width: `${progress}%` }}>
                        {progress > 10 && `${progress.toFixed(1)}%`}
                     </div>
                 </div>
@@ -2813,12 +2790,7 @@ const LiveFundingCard = ({ project }) => {
             <div className="border-t pt-4 h-40 relative overflow-y-auto">
                 <h4 className="font-semibold text-gray-700 mb-2 sticky top-0 bg-white pb-2">Recent Investments</h4>
                 <div className="space-y-2">
-                    {recentInvestments.length > 0 ? recentInvestments.map((investment, index) => (
-                         <div key={investment.id} className={`p-2 rounded-md bg-green-50 flex justify-between items-center transition-opacity duration-500 ${index > 0 ? 'opacity-70' : ''}`}>
-                            <span className="text-sm text-green-800">New Investment</span>
-                            <span className="text-sm font-bold text-green-900">{formatCurrency(investment.amount)}</span>
-                        </div>
-                    )) : <p className="text-sm text-gray-500 text-center py-4">Waiting for new investments...</p>}
+                    <p className="text-sm text-gray-500 text-center py-4">Live activity feed is currently paused.</p>
                 </div>
             </div>
         </div>
@@ -3357,38 +3329,12 @@ const AdminTreasuryCard = ({ stats }) => {
 };
 
 const AdminLiveFundingMonitor = ({ allProjects, onSelectProject }) => {
-    const [liveProjects, setLiveProjects] = useState(allProjects);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setLiveProjects(currentProjects => {
-                const activeProjects = currentProjects.filter(p => p.status === 'active' && p.amountRaised < p.fundingGoal);
-                if (activeProjects.length === 0) return currentProjects;
-
-                // Pick a random project to update
-                const projectToUpdate = activeProjects[Math.floor(Math.random() * activeProjects.length)];
-                const newInvestment = Math.floor(Math.random() * (2000 - 100 + 1)) + 100;
-
-                return currentProjects.map(p => {
-                    if (p.id === projectToUpdate.id) {
-                        const newAmountRaised = Math.min(p.amountRaised + newInvestment, p.fundingGoal);
-                        const newStatus = newAmountRaised >= p.fundingGoal ? 'funded' : p.status;
-                        return { ...p, amountRaised: newAmountRaised, status: newStatus };
-                    }
-                    return p;
-                });
-            });
-        }, 2500); // Update every 2.5 seconds
-
-        return () => clearInterval(interval);
-    }, []);
-
-    const activeFundingProjects = liveProjects.filter(p => p.status === 'active' && p.amountRaised < p.fundingGoal);
+    const activeFundingProjects = allProjects.filter(p => p.status === 'active' && p.amountRaised < p.fundingGoal);
 
     return (
         <div className="bg-white p-6 rounded-lg shadow-md">
             <div className="flex items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-800">Platform Live Funding Monitor</h3>
+                <h3 className="text-xl font-bold text-gray-800">Active Funding Monitor</h3>
                 {activeFundingProjects.length > 0 && (
                     <span className="flex items-center ml-3 text-sm font-medium text-green-600">
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500 mr-2"></span>
@@ -3407,7 +3353,7 @@ const AdminLiveFundingMonitor = ({ allProjects, onSelectProject }) => {
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2.5">
                                 <div
-                                    className="bg-green-500 h-2.5 rounded-full transition-all duration-500 ease-out"
+                                    className="bg-green-500 h-2.5 rounded-full"
                                     style={{ width: `${progress}%` }}
                                 ></div>
                             </div>
@@ -3945,6 +3891,9 @@ export default function App() {
         </div>
     );
 }
+
+
+
 
 
 
