@@ -2283,6 +2283,7 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
     const [isInvestmentModalOpen, setInvestmentModalOpen] = useState(false);
     const [isGeminiChatOpen, setGeminiChatOpen] = useState(false);
     
+    const isKycVerified = currentUser.kycStatus === 'Verified';
     const stablecoinBalance = (currentUser.wallet.usdt || 0) + (currentUser.wallet.usdc || 0);
     const numericInvestmentAmount = parseFloat(investmentAmount.replace(/,/g, '')) || 0;
     const pricePerToken = project.fundingGoal > 0 && project.tokenSupply > 0 ? project.fundingGoal / project.tokenSupply : 1;
@@ -2404,9 +2405,9 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
                                      <button 
                                         onClick={() => setInvestmentModalOpen(true)} 
                                         className="w-full bg-indigo-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-indigo-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-                                        disabled={isDeveloper || isFunded || !investmentAmount || numericInvestmentAmount <= 0 || totalDebit > stablecoinBalance}
+                                        disabled={isDeveloper || isFunded || !investmentAmount || numericInvestmentAmount <= 0 || totalDebit > stablecoinBalance || !isKycVerified}
                                      >
-                                        {isDeveloper ? "Developers cannot invest" : isFunded ? "Project Fully Funded" : "Invest Now"}
+                                        {isDeveloper ? "Developers cannot invest" : isFunded ? "Project Fully Funded" : !isKycVerified ? "Verify KYC to Invest" : "Invest Now"}
                                      </button>
                                      <button 
                                         onClick={() => setGeminiChatOpen(true)}
@@ -4377,6 +4378,11 @@ export default function App() {
             return;
         }
 
+        if (currentUser.kycStatus !== 'Verified') {
+            alert("Investment failed. You must complete KYC verification before investing.");
+            return;
+        }
+
         if (!amount || amount <= 0) {
             alert("Please enter a valid investment amount.");
             return;
@@ -4497,6 +4503,7 @@ export default function App() {
         </div>
     );
 }
+
 
 
 
