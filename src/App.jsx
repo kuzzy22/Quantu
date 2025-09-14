@@ -1,4 +1,4 @@
-  import React, { useState, useEffect, useMemo, useRef } from 'react';
+   import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 // --- MOCK DATA --- //
 // In a real application, this data would come from a secure backend and blockchain.
@@ -616,11 +616,11 @@ const LandingPage = ({ setPage, projects }) => {
                         <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
                             <div className="bg-gray-50 p-8 rounded-lg border border-gray-200">
                                 <h3 className="text-xl font-bold text-gray-900 mb-2">AI-Powered Due Diligence</h3>
-                                <p className="text-gray-600">For investors, our Gemini-powered AI analyzes each property, providing a comprehensive summary of its investment potential and potential risks. Get instant, data-driven insights to make more informed decisions.</p>
+                                <p className="text-gray-600">Powered by OpenAI’s most advanced intelligence, our platform delivers a meticulous, high-level analysis of every property—highlighting both opportunities and risks with unparalleled precision. Gain the clarity and confidence to act decisively and secure the most lucrative investments before anyone else.</p>
                             </div>
                             <div className="bg-gray-50 p-8 rounded-lg border border-gray-200">
                                 <h3 className="text-xl font-bold text-gray-900 mb-2">Generative Project Proposals</h3>
-                                <p className="text-gray-600">For developers, our platform uses generative AI to help you craft compelling project descriptions and proposals. Simply input the key details, and let our AI assist you in creating professional, investor-ready content in minutes.</p>
+                                <p className="text-gray-600">For developers, our platform leverages generative AI to transform your project details into polished, persuasive descriptions and proposals. Just share the essentials, and our AI crafts professional, investor-ready content—saving you hours and elevating your pitch.</p>
                             </div>
                         </div>
                     </div>
@@ -4497,6 +4497,8 @@ export default function App() {
         </div>
     );
 }
+
+
 
 
 
