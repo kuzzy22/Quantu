@@ -1,4 +1,4 @@
-             import React, { useState, useEffect, useMemo } from 'react';
+  import React, { useState, useEffect, useMemo, useRef } from 'react';
 
 // --- MOCK DATA --- //
 // In a real application, this data would come from a secure backend and blockchain.
@@ -67,6 +67,8 @@ const initialProjects = [
     ],
     status: 'funded', // 'pending', 'active', 'funded', 'completed'
     projectWalletBalance: 5000, // For APY payments
+    completionDate: '2024-05-15T00:00:00Z',
+    fundsWithdrawn: true,
   },
   {
     id: 2,
@@ -90,6 +92,7 @@ const initialProjects = [
     ],
     status: 'active',
     projectWalletBalance: 12000,
+    fundsWithdrawn: false,
   },
   {
     id: 3,
@@ -112,6 +115,7 @@ const initialProjects = [
     ],
     status: 'active',
     projectWalletBalance: 0,
+    fundsWithdrawn: false,
   },
   {
     id: 4,
@@ -134,6 +138,7 @@ const initialProjects = [
     ],
     status: 'pending', // Submitted for admin approval
     projectWalletBalance: 0,
+    fundsWithdrawn: false,
   },
 ];
 
@@ -160,6 +165,53 @@ const initialMarketListings = [
     { listingId: 1, tokenId: 'proj2-mkt-1', sellerId: 1, projectId: 2, amount: 2000, price: 2100 } // Ada is selling 2000 of her market tokens for project 2 at a premium
 ];
 
+// --- GEMINI API INTEGRATION --- //
+
+// This is a generic helper function to call the Gemini API.
+// It includes exponential backoff for retrying requests.
+const callGeminiAPI = async (payload, retries = 3, delay = 1000) => {
+    const apiKey = ""; // This will be handled by the execution environment.
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            // If the response is not OK, but it's a rate-limiting error, we can retry.
+            if (response.status === 429 && retries > 0) {
+                console.warn(`Gemini API rate limited. Retrying in ${delay / 1000}s... (${retries} retries left)`);
+                await new Promise(res => setTimeout(res, delay));
+                return callGeminiAPI(payload, retries - 1, delay * 2);
+            }
+            // For other errors, we throw an exception to be caught below.
+            const errorBody = await response.json();
+            throw new Error(`Gemini API Error: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
+        }
+
+        const result = await response.json();
+        const candidate = result.candidates?.[0];
+
+        if (candidate && candidate.content?.parts?.[0]?.text) {
+            return candidate.content.parts[0].text;
+        } else {
+            // This handles cases where the response is successful but the content is empty or malformed.
+             const finishReason = candidate?.finishReason;
+             if (finishReason === 'SAFETY') {
+                 return "The response could not be generated due to safety settings. Please modify your request.";
+             }
+            throw new Error('Invalid response structure from Gemini API.');
+        }
+
+    } catch (error) {
+        console.error("Error calling Gemini API:", error);
+        throw error; // Re-throw the error to be handled by the calling component
+    }
+};
+
 
 // --- SVG ICONS AS REACT COMPONENTS --- //
 const KayzeraLogo = (props) => (
@@ -173,6 +225,19 @@ const KayzeraLogo = (props) => (
     <path d="M4 4H8V20H4V4Z" fill="url(#logoGradient)" />
     <path d="M9 11L16 4L20 8L13 15V20H9V11Z" fill="url(#logoGradient)" />
   </svg>
+);
+const SparklesIcon = (props) => (
+  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3L9.5 8.5L4 11L9.5 13.5L12 19L14.5 13.5L20 11L14.5 8.5L12 3Z"/>
+    <path d="M3 21L4.5 16.5L9 15L4.5 13.5L3 9"/>
+    <path d="M21 21L19.5 16.5L15 15L19.5 13.5L21 9"/>
+  </svg>
+);
+const SendIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4 20-7z"/></svg>
+);
+const BotIcon = (props) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
 );
 
 const BuildingIcon = (props) => (
@@ -242,7 +307,7 @@ const ChevronDownIcon = (props) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
 );
 const PaperclipIcon = (props) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
 );
 
 const DownloadLogoButton = () => {
@@ -304,7 +369,7 @@ const MenuIcon = (props) => (
 );
 
 const BellIcon = (props) => (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
 );
 
 
@@ -412,8 +477,8 @@ const Header = ({ page, currentUser, setPage, setCurrentUser }) => {
                     <div className="hidden md:block">
                         <div className="ml-10 flex items-baseline space-x-4">
                             <a href="#" onClick={() => setPage('landing')} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Home</a>
-                            <a href="#" onClick={() => currentUser ? setPage(getDashboardLink()) : setPage('login')} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Projects</a>
-                            <a href="#about" onClick={(e) => { e.preventDefault(); handleScrollTo('about'); }} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">About Us</a>
+                            <a href="#featured-projects" onClick={(e) => { e.preventDefault(); handleScrollTo('featured-projects'); }} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Projects</a>
+                            <a href="#" onClick={() => setPage('company')} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">About Us</a>
                             <a href="#faq" onClick={(e) => { e.preventDefault(); handleScrollTo('faq'); }} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">FAQ</a>
                             <a href="#compliance" onClick={(e) => { e.preventDefault(); handleScrollTo('compliance'); }} className="text-gray-600 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Compliance</a>
                         </div>
@@ -516,23 +581,46 @@ const LandingPage = ({ setPage, projects }) => {
                             <p className="mt-2 text-lg text-gray-600">Every investment provides you with two distinct types of tokens, balancing long-term growth with immediate flexibility.</p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                            <div className="bg-white p-8 rounded-lg shadow-md border-l-4 border-blue-500">
+                            <div className="bg-white p-8 rounded-lg shadow-md">
                                 <div className="flex items-center mb-4">
-                                    <div className="p-2 bg-blue-100 rounded-full mr-4">
-                                        <ShieldCheckIcon className="w-6 h-6 text-blue-600"/>
+                                    <div className="p-2 bg-indigo-100 rounded-full mr-4">
+                                        <ShieldCheckIcon className="w-6 h-6 text-indigo-600"/>
                                     </div>
                                     <h3 className="text-2xl font-bold text-gray-900">Security Tokens</h3>
                                 </div>
                                 <p className="text-gray-600">This token represents your core ownership in the property. It is locked for the project's term and generates your monthly APY returns. Think of it as your proof of ownership and your key to long-term wealth building.</p>
                             </div>
-                            <div className="bg-white p-8 rounded-lg shadow-md border-l-4 border-purple-500">
+                            <div className="bg-white p-8 rounded-lg shadow-md">
                                 <div className="flex items-center mb-4">
-                                    <div className="p-2 bg-purple-100 rounded-full mr-4">
-                                        <TrendingUpIcon className="w-6 h-6 text-purple-600"/>
+                                    <div className="p-2 bg-indigo-100 rounded-full mr-4">
+                                        <TrendingUpIcon className="w-6 h-6 text-indigo-600"/>
                                     </div>
                                     <h3 className="text-2xl font-bold text-gray-900">Market Tokens</h3>
                                 </div>
                                 <p className="text-gray-600">Paired 1:1 with your Security Tokens, these are designed for liquidity. You can sell your Market Tokens to other investors on our Secondary Market at any time, allowing you to exit your position before the project's lockup period ends.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* AI-Powered Features Section */}
+                <div className="py-16 bg-white">
+                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="text-center">
+                             <div className="inline-block p-3 bg-indigo-100 rounded-full mb-4">
+                                <SparklesIcon className="w-8 h-8 text-indigo-600" />
+                            </div>
+                            <h2 className="text-3xl font-bold text-gray-800">Powered by AI for Smarter Investing</h2>
+                            <p className="mt-2 text-lg text-gray-600 max-w-3xl mx-auto">Kayzera leverages cutting-edge AI to provide deeper insights and streamline the investment process for everyone.</p>
+                        </div>
+                        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                            <div className="bg-gray-50 p-8 rounded-lg border border-gray-200">
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">AI-Powered Due Diligence</h3>
+                                <p className="text-gray-600">For investors, our Gemini-powered AI analyzes each property, providing a comprehensive summary of its investment potential and potential risks. Get instant, data-driven insights to make more informed decisions.</p>
+                            </div>
+                            <div className="bg-gray-50 p-8 rounded-lg border border-gray-200">
+                                <h3 className="text-xl font-bold text-gray-900 mb-2">Generative Project Proposals</h3>
+                                <p className="text-gray-600">For developers, our platform uses generative AI to help you craft compelling project descriptions and proposals. Simply input the key details, and let our AI assist you in creating professional, investor-ready content in minutes.</p>
                             </div>
                         </div>
                     </div>
@@ -554,34 +642,6 @@ const LandingPage = ({ setPage, projects }) => {
                     </div>
                 </div>
 
-                 {/* About Us Section */}
-                <div id="about" className="py-16 bg-white">
-                    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-                        <div className="text-center mb-12">
-                            <h2 className="text-3xl font-bold text-gray-800">About Kayzera</h2>
-                             <p className="mt-2 text-lg text-gray-600">
-                                Democratizing real estate investment in Nigeria.
-                            </p>
-                        </div>
-                        <div className="max-w-3xl mx-auto text-center">
-                            <div>
-                                <h3 className="text-2xl font-bold text-gray-800 mb-4">Our Mission</h3>
-                                <p className="text-lg text-gray-600 mb-6">
-                                    Our mission is to empower Nigerians to build wealth through property ownership, while also providing a vital source of capital for the real estate sector, contributing to the nation's economic growth.
-                                </p>
-                                <h3 className="text-2xl font-bold text-gray-800 mb-4">Our Vision</h3>
-                                <p className="text-lg text-gray-600 mb-6">
-                                    To be the leading and most trusted tokenized real estate crowdfunding platform in Africa, known for our innovation, integrity, and commitment to creating value for our stakeholders.
-                                </p>
-                                <h3 className="text-2xl font-bold text-gray-800 mb-4">Our Team</h3>
-                                <p className="text-lg text-gray-600">
-                                    Our team is composed of seasoned professionals with deep expertise in blockchain technology, property development, and legal compliance, ensuring a secure, transparent, and efficient platform for all our users.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
                  {/* Compliance Section */}
                 <div id="compliance" className="py-16 bg-gray-50">
                     <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-4xl text-center">
@@ -655,65 +715,6 @@ const LandingPage = ({ setPage, projects }) => {
                 </div>
 
             </div>
-             {/* Footer */}
-            <footer className="bg-gray-800 text-white">
-                <div className="container mx-auto py-12 px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-                        <div className="md:col-span-12 lg:col-span-4">
-                            <div className="space-y-4">
-                                <a href="#" onClick={() => setPage('landing')} className="flex-shrink-0 flex items-center gap-2">
-                                    <KayzeraLogo className="h-8 w-8"/>
-                                    <span className="text-2xl font-bold text-white">Kayzera</span>
-                                </a>
-                                <p className="text-gray-400 text-base max-w-xs">Democratizing real estate for everyone by making it accessible, transparent, and liquid.</p>
-                                <DownloadLogoButton />
-                            </div>
-                        </div>
-                        <div className="md:col-span-4 lg:col-span-2">
-                            <h3 className="text-sm font-semibold text-gray-300 tracking-wider uppercase">Solutions</h3>
-                            <ul className="mt-4 space-y-4">
-                                <li><a href="#" className="text-base text-gray-400 hover:text-white">For Investors</a></li>
-                                <li><a href="#" className="text-base text-gray-400 hover:text-white">For Developers</a></li>
-                            </ul>
-                        </div>
-                        <div className="md:col-span-4 lg:col-span-2">
-                            <h3 className="text-sm font-semibold text-gray-300 tracking-wider uppercase">Company</h3>
-                            <ul className="mt-4 space-y-4">
-                                <li><a href="#about" onClick={(e) => { e.preventDefault(); document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-base text-gray-400 hover:text-white">About</a></li>
-                                <li><a href="#" className="text-base text-gray-400 hover:text-white">Blog</a></li>
-                                <li><a href="#compliance" onClick={(e) => { e.preventDefault(); document.getElementById('compliance')?.scrollIntoView({ behavior: 'smooth' }); }} className="text-base text-gray-400 hover:text-white">Compliance</a></li>
-                            </ul>
-                        </div>
-                        <div className="md:col-span-4 lg:col-span-2">
-                             <h3 className="text-sm font-semibold text-gray-300 tracking-wider uppercase">Legal</h3>
-                             <ul className="mt-4 space-y-4">
-                                 <li><a href="#" className="text-base text-gray-400 hover:text-white">Privacy</a></li>
-                                 <li><a href="#" className="text-base text-gray-400 hover:text-white">Terms</a></li>
-                             </ul>
-                        </div>
-                        <div className="md:col-span-12 lg:col-span-2">
-                             <h3 className="text-sm font-semibold text-gray-300 tracking-wider uppercase">Connect With Us</h3>
-                             <div className="mt-4 flex space-x-6">
-                                <a href="#" className="text-gray-400 hover:text-white">
-                                    <span className="sr-only">Twitter</span>
-                                    <TwitterIcon className="h-6 w-6" />
-                                </a>
-                                <a href="#" className="text-gray-400 hover:text-white">
-                                    <span className="sr-only">LinkedIn</span>
-                                    <LinkedinIcon className="h-6 w-6" />
-                                </a>
-                                <a href="#" className="text-gray-400 hover:text-white">
-                                    <span className="sr-only">Instagram</span>
-                                    <InstagramIcon className="h-6 w-6" />
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="mt-8 border-t border-gray-700 pt-8 text-center">
-                        <p className="text-base text-gray-500">&copy; 2025 Kayzera. All rights reserved.</p>
-                    </div>
-                </div>
-            </footer>
         </div>
     );
 };
@@ -2280,6 +2281,7 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
     const [mainImage, setMainImage] = useState(project.images[0]);
     const [investmentAmount, setInvestmentAmount] = useState('');
     const [isInvestmentModalOpen, setInvestmentModalOpen] = useState(false);
+    const [isGeminiChatOpen, setGeminiChatOpen] = useState(false);
     
     const stablecoinBalance = (currentUser.wallet.usdt || 0) + (currentUser.wallet.usdc || 0);
     const numericInvestmentAmount = parseFloat(investmentAmount.replace(/,/g, '')) || 0;
@@ -2406,6 +2408,12 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
                                      >
                                         {isDeveloper ? "Developers cannot invest" : isFunded ? "Project Fully Funded" : "Invest Now"}
                                      </button>
+                                     <button 
+                                        onClick={() => setGeminiChatOpen(true)}
+                                        className="mt-2 w-full flex items-center justify-center bg-transparent text-indigo-600 px-6 py-2 rounded-md font-semibold hover:bg-indigo-50 border border-indigo-200 transition-colors"
+                                     >
+                                        <SparklesIcon className="w-5 h-5 mr-2" /> ✨ Ask Gemini about this Property
+                                     </button>
                                  </div>
                              </div>
                          </div>
@@ -2419,9 +2427,152 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
                 project={project}
                 details={{ numericInvestmentAmount, fee, totalDebit, tokensToReceive }}
             />
+             <GeminiChatModal 
+                isOpen={isGeminiChatOpen}
+                onClose={() => setGeminiChatOpen(false)}
+                project={project}
+            />
         </div>
     );
 };
+
+const GeminiChatModal = ({ isOpen, onClose, project }) => {
+    const [messages, setMessages] = useState([]);
+    const [input, setInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const messagesEndRef = useRef(null);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
+    
+    useEffect(() => {
+        if(isOpen) {
+            // Reset state when modal opens
+            setMessages([{ 
+                sender: 'bot', 
+                text: `Hi! I'm Gemini, your AI assistant. How can I help you with the "${project.title}" property today? You can ask about the location, investment potential, or market trends.` 
+            }]);
+            setInput('');
+            setIsLoading(false);
+        }
+    }, [isOpen, project.title]);
+
+    const handleSendMessage = async (e) => {
+        e.preventDefault();
+        if (!input.trim() || isLoading) return;
+
+        const userMessage = { sender: 'user', text: input };
+        setMessages(prev => [...prev, userMessage]);
+        setInput('');
+        setIsLoading(true);
+
+        try {
+            const systemPrompt = `You are a helpful and knowledgeable real estate investment assistant for a platform called Kayzera. Your purpose is to answer user questions about a specific property to help them make an informed investment decision. You must be professional, encouraging, and base your answers on the provided context and grounded search results. Never give financial advice.
+
+            Here is the context for the current property:
+            - Title: ${project.title}
+            - Location: ${project.location}
+            - Description: ${project.description}
+            - Funding Goal: ${formatCurrency(project.fundingGoal)}
+            - APY: ${project.apy}%
+            - Term: ${project.term} months
+            - Status: ${project.status}
+            `;
+
+            const payload = {
+                contents: [{ parts: [{ text: input }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            const responseText = await callGeminiAPI(payload);
+            const botMessage = { sender: 'bot', text: responseText };
+            setMessages(prev => [...prev, botMessage]);
+
+        } catch (error) {
+            const errorMessage = { sender: 'bot', text: "I'm sorry, I encountered an error while trying to get a response. Please try again later." };
+            setMessages(prev => [...prev, errorMessage]);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col" style={{height: '80vh', maxHeight: '700px'}}>
+                <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-lg">
+                    <div className="flex items-center">
+                         <SparklesIcon className="w-6 h-6 text-indigo-600 mr-3"/>
+                        <div>
+                             <h3 className="text-lg font-semibold text-gray-800">Ask Gemini about {project.title}</h3>
+                             <p className="text-xs text-green-600 flex items-center"><span className="h-2 w-2 bg-green-500 rounded-full mr-1.5"></span>Online</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-200">
+                        <XIcon className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-gray-100">
+                    {messages.map((msg, index) => (
+                         <div key={index} className={`flex items-start gap-3 ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                            {msg.sender === 'bot' && (
+                                <div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center flex-shrink-0">
+                                    <BotIcon className="w-5 h-5" />
+                                </div>
+                            )}
+                            <div className={`max-w-md lg:max-w-lg px-4 py-2 rounded-lg ${msg.sender === 'user' ? 'bg-indigo-500 text-white rounded-br-none' : 'bg-white text-gray-800 rounded-bl-none border'}`}>
+                               <p className="text-sm" dangerouslySetInnerHTML={{ __html: msg.text.replace(/\n/g, '<br />') }} />
+                            </div>
+                              {msg.sender === 'user' && (
+                                <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center flex-shrink-0">
+                                    <UserIcon className="w-5 h-5" />
+                                </div>
+                            )}
+                         </div>
+                    ))}
+                    {isLoading && (
+                         <div className="flex items-start gap-3 justify-start">
+                             <div className="w-8 h-8 rounded-full bg-indigo-500 text-white flex items-center justify-center flex-shrink-0">
+                                <BotIcon className="w-5 h-5" />
+                            </div>
+                            <div className="max-w-md lg:max-w-lg px-4 py-3 rounded-lg bg-white text-gray-800 rounded-bl-none border">
+                               <div className="flex items-center space-x-1">
+                                  <span className="h-1.5 w-1.5 bg-gray-500 rounded-full animate-pulse [animation-delay:-0.3s]"></span>
+                                  <span className="h-1.5 w-1.5 bg-gray-500 rounded-full animate-pulse [animation-delay:-0.15s]"></span>
+                                  <span className="h-1.5 w-1.5 bg-gray-500 rounded-full animate-pulse"></span>
+                               </div>
+                            </div>
+                        </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                </div>
+                <div className="p-4 bg-white border-t rounded-b-lg">
+                    <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
+                        <input
+                            type="text"
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            placeholder="Ask a question..."
+                            className="flex-1 block w-full border-gray-300 rounded-full py-2 px-4 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100"
+                            disabled={isLoading}
+                        />
+                        <button type="submit" className="bg-indigo-600 text-white p-2.5 rounded-full font-semibold hover:bg-indigo-700 disabled:bg-indigo-300" disabled={isLoading}>
+                            <SendIcon className="w-5 h-5" />
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 const InvestmentModal = ({ isOpen, onClose, onConfirm, project, details }) => {
     const [status, setStatus] = useState('confirm'); // confirm, processing, success, error
@@ -2781,17 +2932,13 @@ const UpcomingApyCard = ({ projects }) => {
         const payments = projects
             .filter(p => (p.status === 'active' || p.status === 'funded'))
             .map(project => {
-                const paymentDay = new Date(project.startDate).getDate();
-                let nextPaymentDate = new Date(today.getFullYear(), today.getMonth(), paymentDay);
+                const paymentDay = new Date(project.startDate).getUTCDate();
+                let nextPaymentDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), paymentDay));
 
-                if (nextPaymentDate < today) {
-                    nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
+                // This loop ensures the nextPaymentDate is in the future.
+                while (nextPaymentDate < today) {
+                    nextPaymentDate.setUTCMonth(nextPaymentDate.getUTCMonth() + 1);
                 }
-                
-                if (nextPaymentDate < today) {
-                     nextPaymentDate.setMonth(nextPaymentDate.getMonth() + 1);
-                }
-
 
                 if (nextPaymentDate <= thirtyDaysFromNow) {
                     return {
@@ -3136,6 +3283,8 @@ const DeveloperCreateProject = () => {
         tokenTicker: '',
     });
     const [impliedPrice, setImpliedPrice] = useState(0);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [generationError, setGenerationError] = useState('');
 
     useEffect(() => {
         const goal = parseFloat(String(formData.fundingGoal).replace(/,/g, ''));
@@ -3164,6 +3313,34 @@ const DeveloperCreateProject = () => {
         }
     };
     
+    const handleGenerateDescription = async () => {
+        setIsGenerating(true);
+        setGenerationError('');
+        try {
+             const userPrompt = `Generate a compelling and professional real estate project description based on the following key details. The tone should be enticing to potential investors on a real estate crowdfunding platform.
+            
+            - Project Title: ${formData.projectTitle || 'Unnamed Project'}
+            - Location: ${formData.location || 'Not specified'}
+            - Funding Goal: $${formData.fundingGoal || '0'}
+            - Target APY: ${formData.apy || 'Not specified'}%
+            - Investment Term: ${formData.term || 'Not specified'} months
+
+            Highlight the key selling points and investment potential. Keep it to one or two paragraphs.`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userPrompt }] }],
+            };
+            const generatedText = await callGeminiAPI(payload);
+            
+            setFormData(prev => ({...prev, description: generatedText }));
+
+        } catch (error) {
+            setGenerationError('Failed to generate description. Please try again.');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
+
     const FileUploadComponent = ({ label, description }) => (
         <div>
             <label className="block text-sm font-medium text-gray-700">{label}</label>
@@ -3206,6 +3383,18 @@ const DeveloperCreateProject = () => {
                     <div>
                          <label className="block text-sm font-medium text-gray-700">Description</label>
                          <textarea name="description" value={formData.description} onChange={handleInputChange} rows="4" placeholder="e.g., A stunning collection of 2 and 3-bedroom apartments with waterfront views..." className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"></textarea>
+                         <div className="mt-2 flex justify-end">
+                            <button
+                                type="button"
+                                onClick={handleGenerateDescription}
+                                disabled={isGenerating}
+                                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300"
+                            >
+                                <SparklesIcon className="w-4 h-4 mr-2" />
+                                {isGenerating ? 'Generating...' : '✨ Generate with Gemini'}
+                            </button>
+                         </div>
+                         {generationError && <p className="text-red-500 text-xs mt-1">{generationError}</p>}
                     </div>
 
                     <FileUploadComponent label="Property Pictures" description="Upload images that will be displayed on the properties tab after approval." />
@@ -3778,6 +3967,7 @@ const AdminProjectApprovals = ({ projects, onUpdateProjectStatus }) => {
 
 const AdminProjectDetails = ({ project, onUpdateProjectStatus, onBack }) => {
     const [mainImage, setMainImage] = useState(project.images[0]);
+    const [summary, setSummary] = useState({ text: '', isLoading: false, error: '' });
 
     const handleApprove = () => {
         onUpdateProjectStatus(project.id, 'active');
@@ -3788,20 +3978,73 @@ const AdminProjectDetails = ({ project, onUpdateProjectStatus, onBack }) => {
         onUpdateProjectStatus(project.id, 'rejected');
         onBack();
     };
+    
+    const generateSummary = async () => {
+        setSummary({ text: '', isLoading: true, error: '' });
+        try {
+            const systemPrompt = `You are a meticulous financial analyst and due diligence officer for a real estate crowdfunding platform named Kayzera. Your task is to review a new project submission and provide a concise summary and a risk analysis for the admin. Use the provided data and grounded search results to inform your analysis. Structure your response with a "Project Summary" section and a "Potential Risks & Due Diligence Points" section with bullet points.`;
+            
+            const userPrompt = `Please analyze the following project submission:
+            - Project Title: ${project.title}
+            - Developer: ${project.developerName}
+            - Location: ${project.location}
+            - Description: ${project.description}
+            - Funding Goal: ${formatCurrency(project.fundingGoal)}
+            - Proposed APY: ${project.apy}%
+            - Term: ${project.term} months
+            - Token Supply: ${project.tokenSupply.toLocaleString()}
+            
+            Based on this information and any publicly available data about the location or developer, generate a summary and risk analysis.`;
+
+             const payload = {
+                contents: [{ parts: [{ text: userPrompt }] }],
+                tools: [{ "google_search": {} }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+            const responseText = await callGeminiAPI(payload);
+            setSummary({ text: responseText, isLoading: false, error: '' });
+        } catch(e) {
+            setSummary({ text: '', isLoading: false, error: 'Failed to generate summary. Please check the connection and try again.' });
+        }
+    };
 
     return (
         <div>
             <button onClick={onBack} className="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900 mb-6">
                 <ArrowLeftIcon className="w-4 h-4 mr-2" />
-                Back to Approval List
+                Back to Project Approvals
             </button>
-
-            <div className="bg-white p-8 rounded-lg shadow-xl">
-                {/* Header */}
-                <div className="border-b pb-4 mb-6">
-                    <h2 className="text-3xl font-bold text-gray-900">{project.title}</h2>
-                    <p className="text-md text-gray-500">Submitted by: <span className="font-semibold">{project.developerName}</span></p>
+            
+            <div>
+               <div className="border-b pb-4 mb-6 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-3xl font-bold text-gray-900">{project.title}</h2>
+                        <p className="text-md text-gray-500">Submitted by: <span className="font-semibold">{project.developerName}</span></p>
+                    </div>
+                    <button
+                        onClick={generateSummary}
+                        disabled={summary.isLoading}
+                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300"
+                    >
+                         <SparklesIcon className="w-5 h-5 mr-2" />
+                        {summary.isLoading ? 'Analyzing...' : '✨ Generate Approval Summary'}
+                    </button>
                 </div>
+                
+                { (summary.isLoading || summary.text || summary.error) && (
+                    <div className="mb-8 p-6 bg-indigo-50 rounded-lg border border-indigo-200">
+                        <h3 className="text-xl font-semibold text-gray-800 mb-4">Gemini AI Analysis</h3>
+                         {summary.isLoading && (
+                             <div className="flex items-center space-x-2 text-gray-600">
+                                 <div className="w-4 h-4 border-2 border-gray-400 border-t-gray-700 rounded-full animate-spin"></div>
+                                 <span>Generating analysis...</span>
+                             </div>
+                         )}
+                         {summary.error && <p className="text-red-600">{summary.error}</p>}
+                         {summary.text && <div className="prose prose-sm max-w-none text-gray-800" dangerouslySetInnerHTML={{ __html: summary.text.replace(/\n/g, '<br />').replace(/\* \b/g, '&bull; ') }} />}
+                    </div>
+                )}
+
 
                 {/* Main Content Grid */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -3898,6 +4141,125 @@ const AdminUserManagement = ({ users }) => {
                 </table>
             </div>
         </div>
+    );
+};
+
+
+// --- NEW COMPANY PAGE & FOOTER --- //
+const CompanyPage = ({ setPage }) => {
+    return (
+        <div className="bg-white py-24 sm:py-32">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-16">
+                    <h1 className="text-4xl font-extrabold text-gray-900 sm:text-5xl md:text-6xl">About Kayzera</h1>
+                     <p className="mt-4 max-w-2xl mx-auto text-xl text-gray-600">
+                        Democratizing real estate investment in Nigeria.
+                    </p>
+                </div>
+                <div className="max-w-5xl mx-auto space-y-20">
+                    <div className="text-center">
+                        <h2 className="text-3xl font-bold text-gray-800 mb-4">Our Mission</h2>
+                        <p className="text-lg text-gray-700 leading-8 max-w-4xl mx-auto">
+                            Our mission is to empower Nigerians to build wealth through property ownership, while also providing a vital source of capital for the real estate sector, contributing to the nation's economic growth.
+                        </p>
+                    </div>
+                     <div className="text-center">
+                        <h2 className="text-3xl font-bold text-gray-800 mb-4">Our Vision</h2>
+                        <p className="text-lg text-gray-700 leading-8 max-w-4xl mx-auto">
+                            To be the leading and most trusted tokenized real estate crowdfunding platform in Africa, known for our innovation, integrity, and commitment to creating value for our stakeholders.
+                        </p>
+                    </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                        <div className="text-center md:text-left">
+                            <h2 className="text-3xl font-bold text-gray-800 mb-4">Our Team</h2>
+                            <p className="text-lg text-gray-700 leading-8">
+                                Our team is composed of seasoned professionals with deep expertise in blockchain technology, property development, and legal compliance, ensuring a secure, transparent, and efficient platform for all our users.
+                            </p>
+                        </div>
+                        <div>
+                             <img 
+                                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2000" 
+                                alt="A diverse group of professionals working collaboratively" 
+                                className="rounded-xl shadow-2xl w-full h-full object-cover"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const Footer = ({ setPage, page }) => {
+    const handleScrollTo = (id) => {
+        if (page !== 'landing') {
+            setPage('landing');
+            setTimeout(() => {
+                document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        } else {
+            document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+    return (
+        <footer className="bg-gray-800 text-white">
+            <div className="container mx-auto py-12 px-4 sm:px-6 lg:px-8">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                    <div className="md:col-span-12 lg:col-span-4">
+                        <div className="space-y-4">
+                            <a href="#" onClick={() => setPage('landing')} className="flex-shrink-0 flex items-center gap-2">
+                                <KayzeraLogo className="h-8 w-8"/>
+                                <span className="text-2xl font-bold text-white">Kayzera</span>
+                            </a>
+                            <p className="text-gray-400 text-base max-w-xs">Democratizing real estate for everyone by making it accessible, transparent, and liquid.</p>
+                            <DownloadLogoButton />
+                        </div>
+                    </div>
+                    <div className="md:col-span-4 lg:col-span-2">
+                        <h3 className="text-sm font-semibold text-gray-300 tracking-wider uppercase">Solutions</h3>
+                        <ul className="mt-4 space-y-4">
+                            <li><a href="#" className="text-base text-gray-400 hover:text-white">For Investors</a></li>
+                            <li><a href="#" className="text-base text-gray-400 hover:text-white">For Developers</a></li>
+                        </ul>
+                    </div>
+                    <div className="md:col-span-4 lg:col-span-2">
+                        <h3 className="text-sm font-semibold text-gray-300 tracking-wider uppercase">Company</h3>
+                        <ul className="mt-4 space-y-4">
+                            <li><a href="#" onClick={() => setPage('company')} className="text-base text-gray-400 hover:text-white">About</a></li>
+                            <li><a href="#" className="text-base text-gray-400 hover:text-white">Blog</a></li>
+                            <li><a href="#compliance" onClick={(e) => { e.preventDefault(); handleScrollTo('compliance'); }} className="text-base text-gray-400 hover:text-white">Compliance</a></li>
+                        </ul>
+                    </div>
+                    <div className="md:col-span-4 lg:col-span-2">
+                         <h3 className="text-sm font-semibold text-gray-300 tracking-wider uppercase">Legal</h3>
+                         <ul className="mt-4 space-y-4">
+                             <li><a href="#" className="text-base text-gray-400 hover:text-white">Privacy</a></li>
+                             <li><a href="#" className="text-base text-gray-400 hover:text-white">Terms</a></li>
+                         </ul>
+                    </div>
+                    <div className="md:col-span-12 lg:col-span-2">
+                         <h3 className="text-sm font-semibold text-gray-300 tracking-wider uppercase">Connect With Us</h3>
+                         <div className="mt-4 flex space-x-6">
+                            <a href="#" className="text-gray-400 hover:text-white">
+                                <span className="sr-only">Twitter</span>
+                                <TwitterIcon className="h-6 w-6" />
+                            </a>
+                            <a href="#" className="text-gray-400 hover:text-white">
+                                <span className="sr-only">LinkedIn</span>
+                                <LinkedinIcon className="h-6 w-6" />
+                            </a>
+                            <a href="#" className="text-gray-400 hover:text-white">
+                                <span className="sr-only">Instagram</span>
+                                <InstagramIcon className="h-6 w-6" />
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div className="mt-8 border-t border-gray-700 pt-8 text-center">
+                    <p className="text-base text-gray-500">&copy; 2025 Kayzera. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
     );
 };
 
@@ -4114,6 +4476,7 @@ export default function App() {
             case 'login': return <LoginPage setPage={setPage} setCurrentUser={setCurrentUser} users={users} />;
             case 'register': return <RegisterPage setPage={setPage} />;
             case 'forgotPassword': return <ForgotPasswordPage setPage={setPage} />;
+            case 'company': return <CompanyPage setPage={setPage} />;
             case 'landing':
             default:
                 return <LandingPage setPage={setPage} projects={projects} />;
@@ -4122,6 +4485,7 @@ export default function App() {
     
     // Determine if the header should be shown. Auth pages have their own minimal UI.
     const showHeader = !['login', 'register', 'forgotPassword'].includes(page) && !currentUser;
+    const showFooter = ['landing', 'company'].includes(page) && !currentUser;
 
     return (
         <div className="font-sans antialiased text-gray-800 flex flex-col min-h-screen">
@@ -4129,26 +4493,10 @@ export default function App() {
             <main className="flex-1 flex flex-col">
                 {renderPage()}
             </main>
+            {showFooter && <Footer setPage={setPage} page={page} />}
         </div>
     );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
