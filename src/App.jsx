@@ -165,11 +165,11 @@ const initialMarketListings = [
     { listingId: 1, tokenId: 'proj2-mkt-1', sellerId: 1, projectId: 2, amount: 2000, price: 2100 } // Ada is selling 2000 of her market tokens for project 2 at a premium
 ];
 
-// --- GEMINI API INTEGRATION --- //
+// --- AI API INTEGRATION --- //
 
-// This is a generic helper function to call the Gemini API.
+// This is a generic helper function to call the AI API.
 // It includes exponential backoff for retrying requests.
-const callGeminiAPI = async (payload, retries = 3, delay = 1000) => {
+const callAIAPI = async (payload, retries = 3, delay = 1000) => {
     const apiKey = ""; // This will be handled by the execution environment.
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
@@ -183,13 +183,13 @@ const callGeminiAPI = async (payload, retries = 3, delay = 1000) => {
         if (!response.ok) {
             // If the response is not OK, but it's a rate-limiting error, we can retry.
             if (response.status === 429 && retries > 0) {
-                console.warn(`Gemini API rate limited. Retrying in ${delay / 1000}s... (${retries} retries left)`);
+                console.warn(`AI API rate limited. Retrying in ${delay / 1000}s... (${retries} retries left)`);
                 await new Promise(res => setTimeout(res, delay));
-                return callGeminiAPI(payload, retries - 1, delay * 2);
+                return callAIAPI(payload, retries - 1, delay * 2);
             }
             // For other errors, we throw an exception to be caught below.
             const errorBody = await response.json();
-            throw new Error(`Gemini API Error: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
+            throw new Error(`AI API Error: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
         }
 
         const result = await response.json();
@@ -203,11 +203,11 @@ const callGeminiAPI = async (payload, retries = 3, delay = 1000) => {
              if (finishReason === 'SAFETY') {
                  return "The response could not be generated due to safety settings. Please modify your request.";
              }
-            throw new Error('Invalid response structure from Gemini API.');
+            throw new Error('Invalid response structure from AI API.');
         }
 
     } catch (error) {
-        console.error("Error calling Gemini API:", error);
+        console.error("Error calling AI API:", error);
         throw error; // Re-throw the error to be handled by the calling component
     }
 };
@@ -2412,7 +2412,7 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
                                         onClick={() => setGeminiChatOpen(true)}
                                         className="mt-2 w-full flex items-center justify-center bg-transparent text-indigo-600 px-6 py-2 rounded-md font-semibold hover:bg-indigo-50 border border-indigo-200 transition-colors"
                                      >
-                                        <SparklesIcon className="w-5 h-5 mr-2" /> ✨ Ask Gemini about this Property
+                                        <SparklesIcon className="w-5 h-5 mr-2" /> ✨ Ask AI about this Property
                                      </button>
                                  </div>
                              </div>
@@ -2427,7 +2427,7 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
                 project={project}
                 details={{ numericInvestmentAmount, fee, totalDebit, tokensToReceive }}
             />
-             <GeminiChatModal 
+             <AIChatModal 
                 isOpen={isGeminiChatOpen}
                 onClose={() => setGeminiChatOpen(false)}
                 project={project}
@@ -2436,7 +2436,7 @@ const ProjectDetailsPage = ({ project, onBack, currentUser, onInvest }) => {
     );
 };
 
-const GeminiChatModal = ({ isOpen, onClose, project }) => {
+const AIChatModal = ({ isOpen, onClose, project }) => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -2455,7 +2455,7 @@ const GeminiChatModal = ({ isOpen, onClose, project }) => {
             // Reset state when modal opens
             setMessages([{ 
                 sender: 'bot', 
-                text: `Hi! I'm Gemini, your AI assistant. How can I help you with the "${project.title}" property today? You can ask about the location, investment potential, or market trends.` 
+                text: `Hi! I'm your AI assistant. How can I help you with the "${project.title}" property today? You can ask about the location, investment potential, or market trends.` 
             }]);
             setInput('');
             setIsLoading(false);
@@ -2490,7 +2490,7 @@ const GeminiChatModal = ({ isOpen, onClose, project }) => {
                 systemInstruction: { parts: [{ text: systemPrompt }] },
             };
 
-            const responseText = await callGeminiAPI(payload);
+            const responseText = await callAIAPI(payload);
             const botMessage = { sender: 'bot', text: responseText };
             setMessages(prev => [...prev, botMessage]);
 
@@ -2511,7 +2511,7 @@ const GeminiChatModal = ({ isOpen, onClose, project }) => {
                     <div className="flex items-center">
                          <SparklesIcon className="w-6 h-6 text-indigo-600 mr-3"/>
                         <div>
-                             <h3 className="text-lg font-semibold text-gray-800">Ask Gemini about {project.title}</h3>
+                             <h3 className="text-lg font-semibold text-gray-800">Ask AI about {project.title}</h3>
                              <p className="text-xs text-green-600 flex items-center"><span className="h-2 w-2 bg-green-500 rounded-full mr-1.5"></span>Online</p>
                         </div>
                     </div>
@@ -3391,7 +3391,7 @@ const DeveloperCreateProject = () => {
                                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300"
                             >
                                 <SparklesIcon className="w-4 h-4 mr-2" />
-                                {isGenerating ? 'Generating...' : '✨ Generate with Gemini'}
+                                {isGenerating ? 'Generating...' : '✨ Generate with AI'}
                             </button>
                          </div>
                          {generationError && <p className="text-red-500 text-xs mt-1">{generationError}</p>}
@@ -4033,7 +4033,7 @@ const AdminProjectDetails = ({ project, onUpdateProjectStatus, onBack }) => {
                 
                 { (summary.isLoading || summary.text || summary.error) && (
                     <div className="mb-8 p-6 bg-indigo-50 rounded-lg border border-indigo-200">
-                        <h3 className="text-xl font-semibold text-gray-800 mb-4">Gemini AI Analysis</h3>
+                        <h3 className="text-xl font-semibold text-gray-800 mb-4">AI Analysis</h3>
                          {summary.isLoading && (
                              <div className="flex items-center space-x-2 text-gray-600">
                                  <div className="w-4 h-4 border-2 border-gray-400 border-t-gray-700 rounded-full animate-spin"></div>
@@ -4497,6 +4497,7 @@ export default function App() {
         </div>
     );
 }
+
 
 
 
