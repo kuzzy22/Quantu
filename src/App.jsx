@@ -1614,19 +1614,19 @@ const InvestorMyTokens = ({ currentUser, projects, portfolios, onClaimApy, onLis
                                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                              {isSecurityToken ? (
                                                 <button 
-                                                    disabled={!canClaimApy} 
+                                                    disabled={!canClaimApy || currentUser.kycStatus !== 'Verified'} 
                                                     onClick={() => onClaimApy(token.tokenId, currentUser.id)}
                                                     className="bg-green-500 text-white px-3 py-1.5 rounded-md text-xs font-medium hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
                                                 >
-                                                    Claim APY
+                                                    {currentUser.kycStatus !== 'Verified' ? 'Verify KYC' : 'Claim APY'}
                                                 </button>
                                              ) : (
                                                 <button 
                                                     onClick={() => handleOpenListModal(token)}
                                                     className="text-indigo-600 hover:text-indigo-900 text-xs font-medium disabled:text-gray-400 disabled:cursor-not-allowed"
-                                                    disabled={token.status === 'listed'}
+                                                    disabled={token.status === 'listed' || currentUser.kycStatus !== 'Verified'}
                                                 >
-                                                    {token.status === 'listed' ? 'Listed' : 'List for Sale'}
+                                                    {currentUser.kycStatus !== 'Verified' ? 'Verify KYC to List' : token.status === 'listed' ? 'Listed' : 'List for Sale'}
                                                 </button>
                                              )}
                                          </td>
@@ -2230,10 +2230,10 @@ const SecondaryMarket = ({ currentUser, marketListings, projects }) => {
                                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{camouflageName(sellerName)}</td>
                                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                          <button
-                                            disabled={currentUser.id === listing.sellerId || currentUser.type === 'developer'}
+                                            disabled={currentUser.id === listing.sellerId || currentUser.type === 'developer' || currentUser.kycStatus !== 'Verified'}
                                             className="bg-green-500 text-white px-4 py-1.5 rounded-md text-xs font-medium hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
                                         >
-                                            {currentUser.type === 'developer' ? 'Disabled' : 'Buy Now'}
+                                            {currentUser.kycStatus !== 'Verified' ? 'Verify KYC' : currentUser.id === listing.sellerId ? 'Your Listing' : 'Buy Now'}
                                          </button>
                                      </td>
                                  </tr>
@@ -3331,7 +3331,7 @@ const DeveloperCreateProject = () => {
             const payload = {
                 contents: [{ parts: [{ text: userPrompt }] }],
             };
-            const generatedText = await callGeminiAPI(payload);
+            const generatedText = await callAIAPI(payload);
             
             setFormData(prev => ({...prev, description: generatedText }));
 
@@ -3361,6 +3361,31 @@ const DeveloperCreateProject = () => {
             </div>
         </div>
     );
+
+    const handleSubmitForReview = async (e) => {
+        e.preventDefault();
+        // In a real application, this function would send the formData 
+        // to a secure backend API endpoint, like '/api/projects'.
+        
+        console.log("Submitting project data to backend:", formData);
+
+        // --- BACKEND PROCESS (SIMULATED) ---
+        // 1. The backend server receives the formData.
+        // 2. It generates a unique file number, e.g., 'PROJ-YYYYMMDD-###'.
+        const fileNumber = `PROJ-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(Math.floor(Math.random() * 1000)).padStart(3, '0')}`;
+        
+        // 3. It saves the project to the database with 'status: "pending"'.
+        
+        // 4. It uses an email service (like SendGrid, AWS SES) to send a formatted email to the admin.
+        // The email content would be generated using a template like the one in 'admin_email_template.md'.
+        console.log(`Email notification prepared for admin with File #: ${fileNumber}`);
+        
+        // 5. The backend returns a success message to the frontend.
+        alert(`Project submitted successfully!\nYour reference file number is ${fileNumber}.\nThe admin team has been notified.`);
+
+        // Here, you might clear the form or redirect the user.
+    };
+
 
     return (
         <div className="bg-white p-8 rounded-lg shadow-md">
@@ -3442,7 +3467,7 @@ const DeveloperCreateProject = () => {
 
                  <div className="flex justify-end pt-4">
                     <button type="button" className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md mr-3 hover:bg-gray-300">Cancel</button>
-                    <button type="submit" onClick={(e) => e.preventDefault()} className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Submit for Review</button>
+                    <button type="submit" onClick={handleSubmitForReview} className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Submit for Review</button>
                 </div>
             </form>
         </div>
@@ -3911,8 +3936,9 @@ const AdminProjectApprovals = ({ projects, onUpdateProjectStatus }) => {
                     <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Project</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Developer</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Raised</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Funding Progress</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -3929,6 +3955,9 @@ const AdminProjectApprovals = ({ projects, onUpdateProjectStatus }) => {
                                  }`}>
                                      {project.status}
                                  </span>
+                             </td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                 <button onClick={() => setViewingProject(project)} className="text-indigo-600 hover:text-indigo-900">Monitor</button>
                              </td>
                          </tr>
                     ))}
@@ -4101,12 +4130,21 @@ const AdminProjectDetails = ({ project, onUpdateProjectStatus, onBack }) => {
 
                 {/* Action Footer */}
                 <div className="border-t mt-8 pt-6 flex justify-end space-x-4">
-                    <button onClick={handleReject} className="bg-red-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-red-700 transition-colors">
-                        Reject Project
-                    </button>
-                    <button onClick={handleApprove} className="bg-green-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-700 transition-colors">
-                        Approve Project
-                    </button>
+                    {project.status === 'pending' ? (
+                        <>
+                            <button onClick={handleReject} className="bg-red-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-red-700 transition-colors">
+                                Reject Project
+                            </button>
+                            <button onClick={handleApprove} className="bg-green-600 text-white px-6 py-2 rounded-md font-semibold hover:bg-green-700 transition-colors">
+                                Approve Project
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button onClick={() => alert('This action is not yet implemented.')} className="bg-yellow-500 text-white px-6 py-2 rounded-md font-semibold hover:bg-yellow-600 transition-colors">Flag for Review</button>
+                            <button onClick={() => alert('This action is not yet implemented.')} className="bg-gray-500 text-white px-6 py-2 rounded-md font-semibold hover:bg-gray-600 transition-colors">View Transactions</button>
+                        </>
+                    )}
                 </div>
             </div>
         </div>
@@ -4276,6 +4314,15 @@ export default function App() {
     const [marketListings, setMarketListings] = useState(initialMarketListings);
 
     const USD_NGN_RATE = 1500;
+
+    // Effect to handle invalid user type safely without causing render loops
+    useEffect(() => {
+        if (currentUser && !['investor', 'developer', 'admin'].includes(currentUser.type)) {
+            console.error("Unknown user type detected, logging out:", currentUser.type);
+            setCurrentUser(null);
+            setPage('login');
+        }
+    }, [currentUser]);
 
     const totalBalance = useMemo(() => {
         if (!currentUser || !currentUser.wallet) {
@@ -4472,9 +4519,9 @@ export default function App() {
                 case 'developer': return <DeveloperDashboard currentUser={currentUser} projects={projects} portfolios={portfolios} marketListings={marketListings} onLogout={handleLogout} totalBalance={totalBalance} />;
                 case 'admin': return <AdminDashboard currentUser={currentUser} projects={projects} users={users} onLogout={handleLogout} totalBalance={totalBalance} onUpdateProjectStatus={handleUpdateProjectStatus} />;
                 default:
-                    // If user type is unknown, log them out.
-                    setCurrentUser(null);
-                    return <LandingPage setPage={setPage} projects={projects} />;
+                    // The useEffect above will handle logging out the user.
+                    // Return null or a loading spinner to avoid rendering with an invalid user state.
+                    return null;
             }
         }
 
@@ -4503,6 +4550,11 @@ export default function App() {
         </div>
     );
 }
+
+
+
+
+
 
 
 
